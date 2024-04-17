@@ -1,0 +1,5 @@
+.idea/
+__pycache__/
+.env
+keep_online.py
+old-main.py

@@ -34,7 +34,3 @@ def get_phrase(nickname) -> str:
     # print(final_phrase)
     return final_phrase.replace("_", nickname)
 
-
-if __name__ == '__main__':
-    print("done hiding!")
-

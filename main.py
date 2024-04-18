@@ -2,6 +2,8 @@
 import discord
 import os
 from dotenv import load_dotenv
+import time
+from datetime import datetime
 
 from modules.leave_message import get_phrase
 
@@ -120,7 +122,6 @@ async def on_message(message):
         await message.channel.send("hey dirtbag")
 
 
-
 @bot.event
 # async def on_reaction_add(reaction, user): # только на новые сообщения
 async def on_raw_reaction_add(reaction):  # должно работать даже на тех, что не в кэше
@@ -131,15 +132,19 @@ async def on_raw_reaction_add(reaction):  # должно работать даж
     message_id = await channel_id.fetch_message(reaction.message_id)
     message_bdy = message_id.content
 
-    # голый запрос без await не успевает вернуться, вызывает ошибку
-    print(f'{Bcolors.BOLD}ID Сервера:{Bcolors.ENDC} "{await bot.fetch_guild(reaction.guild_id)}" - {reaction.guild_id}\n'
-          f'{Bcolors.BOLD}ID Сообщения:{Bcolors.ENDC} {reaction.message_id}\n'
-          f'{Bcolors.BOLD}Эмодзи:{Bcolors.ENDC} <:{reaction.emoji.name}:{reaction.emoji.id}> \n'
-          f'{Bcolors.BOLD}ID Юзера:{Bcolors.ENDC} {reaction.user_id} под ником {reaction.member.display_name} ({reaction.member.name})\n'
-          f'{Bcolors.BOLD}Ссылка на сообщение:{Bcolors.ENDC}\n'
-          f'https://discord.com/channels/{reaction.guild_id}/{reaction.channel_id}/{reaction.message_id}\n'
-          f'{Bcolors.BOLD}Тело сообщения:{Bcolors.ENDC}\n{Bcolors.OKCYAN}{message_bdy}{Bcolors.ENDC}\n')
+    time_string = f'{datetime.now().date().strftime("%d-%m-%Y")} - {datetime.now().time().strftime("%H:%M:%S")}'
 
+    # голый запрос без await не успевает вернуться, вызывает ошибку
+    print(
+        f'{Bcolors.BOLD}Timestamp:{Bcolors.ENDC} {Bcolors.OKGREEN}{time_string}{Bcolors.ENDC}\n'
+        f'{Bcolors.BOLD}ID Сервера:{Bcolors.ENDC} "{await bot.fetch_guild(reaction.guild_id)}" - {reaction.guild_id}\n'
+        f'{Bcolors.BOLD}ID Сообщения:{Bcolors.ENDC} {reaction.message_id}\n'
+        f'{Bcolors.BOLD}Эмодзи:{Bcolors.ENDC} <:{reaction.emoji.name}:{reaction.emoji.id}> \n'
+        f'{Bcolors.BOLD}ID Юзера:{Bcolors.ENDC} {reaction.user_id} под ником {reaction.member.display_name} ({reaction.member.name})\n'
+        f'{Bcolors.BOLD}Ссылка на сообщение:{Bcolors.ENDC}\n'
+        f'https://discord.com/channels/{reaction.guild_id}/{reaction.channel_id}/{reaction.message_id}\n'
+        f'{Bcolors.BOLD}Тело сообщения:{Bcolors.ENDC}\n{Bcolors.OKCYAN}{message_bdy}{Bcolors.ENDC}\n'
+        f'{Bcolors.BOLD}Автор сообщения: {Bcolors.ENDC}{message_id.author.display_name} ({message_id.author.global_name})')
 
     # say_goodbye = get_phrase(reaction.member.display_name)
     # print(f'**{say_goodbye}**')
@@ -147,7 +152,7 @@ async def on_raw_reaction_add(reaction):  # должно работать даж
 
     for x in reaction.member.roles:
         if x.name == "Criminals":
-            print(f"Обнаружен ставящий реакции: {x}!!!!")
+            print(f"Обнаружен ставящий реакции {x}!")
             if reaction.message_id == 1072806217824600074 and reaction.emoji.id == emoji_to_work_with_id:
                 print('Пока-пока!\n')
                 guild_obj = await bot.fetch_guild(reaction.guild_id)
@@ -167,16 +172,24 @@ async def on_raw_reaction_add(reaction):  # должно работать даж
 async def on_member_remove(user_gone):
     # если в списке - убрать из списка и отменить дальнейшую процедуру
     # отмена нужна чтобы при повторном заходе выходе в пределах одной сессии бота он не помнил предыдущий случай
+    print('Пользователь покинул сервер. Был ли обработан в другом событии: ')
     if FarewallManager.in_list(user_gone.id):
+        print(f'Список ID до: {FarewallManager.userid_list}')
         FarewallManager.remove_from_list(user_gone.id)
+        print(f'Да, под ID {user_gone.id} его кикнул РИК-Бот. Теперь пользователь удалён из списка.')
+        print(f'Список ID после: {FarewallManager.userid_list}')
         return
+    print('Нет, он вышел сам или был кикнут вручную.')
 
     # получение канала куда постить
     channel_obj_farewall = await bot.fetch_channel(channel_id_to_farewall)
     # отправка сообщения, делая запрос в класс, который в свою очередь запрашивает рандом из другой функции
     # и возвращает форматированный и готовый к отправке вариант
     await channel_obj_farewall.send(f'{FarewallManager.get_formated_phrase(user_gone.mention)}')
+    print('Done')
 
 
 # EXECUTES THE BOT WITH THE SPECIFIED TOKEN. TOKEN HAS BEEN REMOVED AND USED JUST AS AN EXAMPLE.
-bot.run(DISCORD_TOKEN)
+
+if __name__ == '__main__':
+    bot.run(DISCORD_TOKEN)

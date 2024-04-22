@@ -17,10 +17,12 @@ class FileAction:
 
     @classmethod
     def server_dir_check(cls, id_as_folder_name: int):
-        if os.path.isdir(f'.data/{str(id_as_folder_name)}'):
+        # ленивая загрузка
+        from modules.load_config import config
+        if os.path.isdir(f'{config["server_data_path"]}/{str(id_as_folder_name)}'):
             print("Гильдия уже существует")
         else:
-            os.mkdir(f'.data/{str(id_as_folder_name)}')
+            os.mkdir(f'{config["server_data_path"]}/{str(id_as_folder_name)}')
             print("Папка гильдии создана")
 
     @classmethod

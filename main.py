@@ -24,6 +24,7 @@ bot = discord.Client(intents=intents)
 
 print(f'Выбранная локализация: {config["current_locale"]}')
 
+
 class KickedTotal:
     # сколько всего кикнуто за текущую сессию
     value: int = 0
@@ -115,8 +116,6 @@ async def on_ready():
         print("Ошибка: ", str(f))
     finally:
         pass
-
-
 
 
 # EVENT LISTENER FOR WHEN A NEW MESSAGE IS SENT TO A CHANNEL.

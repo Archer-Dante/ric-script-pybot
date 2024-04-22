@@ -5,7 +5,7 @@ from modules.load_config import config
 
 phrases_list: list
 
-phrase_path_build = config["localization_path"] + "kick_phrases/" + config["current_locale"] + ".txt"
+phrase_path_build = config["localization_path"] + "/kick_phrases/" + config["current_locale"] + ".txt"
 
 with FileAction(phrase_path_build, "r") as current_file:
     phrases_list = current_file.read().splitlines(keepends=False)

@@ -3,3 +3,9 @@ __pycache__/
 .env
 keep_online.py
 old-main.py
+.data/server_id/logs_stored.txt
+.data/server_id/settings.txt
+.data/server_id/stats/разные статистики.txt
+.data/server_id/users/data-by-unique-user-id.txt
+locale/kick_phrases/en.txt
+locale/kick_phrases/ru.txt

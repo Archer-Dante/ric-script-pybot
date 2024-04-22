@@ -2,10 +2,14 @@
 import discord
 import os
 from dotenv import load_dotenv
-import time
 from datetime import datetime
 
-from modules.leave_message import get_phrase
+# импорт своего класса по работе с файлами
+from modules.file_manager import FileAction
+# импорт своей функции по генерации фраз
+from modules.message_manager import get_phrase
+# импорт результата отдельной загрузки для главного конфига
+from modules.load_config import config
 
 # LOADS THE .ENV FILE THAT RESIDES ON THE SAME LEVEL AS THE SCRIPT.
 load_dotenv()
@@ -18,9 +22,7 @@ intents.members = True
 bot = discord.Client(intents=intents)
 # bot = discord.Client(intents=discord.Intents.default())
 
-# выбор локали, варианты: [ru], [en]
-current_locale: str = "ru"
-
+print(f'Выбранная локализация: {config["current_locale"]}')
 
 class KickedTotal:
     # сколько всего кикнуто за текущую сессию
@@ -97,6 +99,8 @@ async def on_ready():
         # INCREMENTS THE GUILD COUNTER.
         guild_count = guild_count + 1
 
+        FileAction.server_dir_check(guild.id)
+
     # PRINTS HOW MANY GUILDS / SERVERS THE BOT IS IN.
     print("SampleDiscordBot is in " + str(guild_count) + " guilds.\n")
 
@@ -111,6 +115,8 @@ async def on_ready():
         print("Ошибка: ", str(f))
     finally:
         pass
+
+
 
 
 # EVENT LISTENER FOR WHEN A NEW MESSAGE IS SENT TO A CHANNEL.

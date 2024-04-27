@@ -3,11 +3,14 @@ import os
 
 class FileAction:
 
-    def __init__(self, filename, openmethod):
-        # .file_object - даёт название тому, как мы будем обращаться
+    def __init__(self, filename, openmethod, content_to_save=None):
         if not os.path.exists(filename) and os.path.isfile(filename):
+        # if not os.path.exists(os.path.dirname(filename)) and os.path.isfile(filename):
             raise Exception("File does not exist! Make one first!")
+        # .file_object - даёт название тому, как мы будем обращаться
         self.file_object = open(filename, openmethod)
+        if openmethod.find("r") >= 0 and content_to_save is not None:
+            self.file_object.write(content_to_save)
 
     def __enter__(self):
         return self.file_object

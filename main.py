@@ -1,8 +1,16 @@
 # IMPORT DISCORD.PY. ALLOWS ACCESS TO DISCORD'S API.
+import urllib.request
+
 import discord
+from discord import app_commands
+from discord.ext import commands
 import os
 from dotenv import load_dotenv
 from datetime import datetime
+from modules.web_manager import progress_bar
+
+import urllib.request as web
+import requests
 
 # импорт своего класса по работе с файлами
 from modules.file_manager import FileAction
@@ -17,10 +25,15 @@ load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 # GETS THE CLIENT OBJECT FROM DISCORD.PY. CLIENT IS SYNONYMOUS WITH BOT.
 
-intents = discord.Intents.default()
-intents.members = True
-bot = discord.Client(intents=intents)
-# bot = discord.Client(intents=discord.Intents.default())
+# юзерагент для запросов на скачку
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+}
+
+# intents = discord.Intents.default()
+# intents.members = True
+# bot = discord.Client(intents=intents)
+bot = commands.Bot(command_prefix=".", intents=discord.Intents.all())
 
 print(f'Выбранная локализация: {config["current_locale"]}')
 
@@ -117,6 +130,60 @@ async def on_ready():
     finally:
         pass
 
+    # current_avatar = bot.user.avatar
+    # print(f'{current_avatar.key}\n{current_avatar.url}')
+    # file_url = current_avatar.url[0:current_avatar.url.find("?")]
+    # print(f'{file_url}')
+    # web.urlretrieve(file_url, current_avatar.key + ".png", progress_bar)
+
+    # response = requests.get(file_url, headers=headers)
+    # if response.status_code == 200:
+    #     FileAction(f'{current_avatar.key}.png', "wb", response.content)
+    #     print(f"Аватар сохранен как {current_avatar.key}.png")
+    # else:
+    #     print(f"Ошибка при загрузке аватара: {response.status_code}")
+
+    with open("cat.gif", "rb") as f:
+        new_avatar = f.read()
+    await bot.user.edit(avatar=new_avatar)
+
+    # with open("winter_forest_new.gif", "rb") as f:
+    #     new_banner = f.read()
+    # await bot.user.edit(banner=new_banner)
+
+    try:
+        commands_list = await bot.tree.sync()
+        print(f'Синхронизировано команд: {len(commands_list)} - {commands_list}')
+    except Exception as e:
+        print(e)
+
+# @bot.command(name="hello")
+# #def hello(interaction: discord.Interaction):
+# #    await interaction.response.
+# async def foo(ctx, arg):
+#     await ctx.send(arg)
+
+@bot.hybrid_command(name="daily")
+async def test(ctx):
+    await ctx.send("Daily yet not implemented! Stay tuned!!")
+
+# @bot.hybrid_group(fallback="get")
+# async def tag(ctx, name):
+#     await ctx.send(f"Showing tag: {name}")
+#
+# @tag.command()
+# async def create(ctx, name):
+#     await ctx.send(f"Created tag: {name}")
+
+
+
+
+
+
+
+
+
+
 
 # EVENT LISTENER FOR WHEN A NEW MESSAGE IS SENT TO A CHANNEL.
 @bot.event
@@ -195,6 +262,7 @@ async def on_member_remove(user_gone):
 
 
 # EXECUTES THE BOT WITH THE SPECIFIED TOKEN. TOKEN HAS BEEN REMOVED AND USED JUST AS AN EXAMPLE.
+
 
 if __name__ == '__main__':
     bot.run(DISCORD_TOKEN)

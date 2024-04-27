@@ -1,5 +1,6 @@
 {
 	"current_locale": "ru",
 	"server_data_path": ".data",
+	"templates_subpath": "_templates",
 	"localization_path": "locale"
 }

@@ -9,8 +9,6 @@ from dotenv import load_dotenv
 from datetime import datetime
 from modules.web_manager import progress_bar
 
-import urllib.request as web
-import requests
 
 # импорт своего класса по работе с файлами
 from modules.file_manager import FileAction
@@ -102,10 +100,9 @@ channel_id_to_farewall = 790367801532612619
 # EVENT LISTENER FOR WHEN THE BOT HAS SWITCHED FROM OFFLINE TO ONLINE.
 @bot.event
 async def on_ready():
-    # CREATES A COUNTER TO KEEP TRACK OF HOW MANY GUILDS / SERVERS THE BOT IS CONNECTED TO.
     guild_count = 0
 
-    # LOOPS THROUGH ALL THE GUILD / SERVERS THAT THE BOT IS ASSOCIATED WITH.
+    # перебор всех гильдий где находится бот, и создание для них папок в случае их отсутствия
     for guild in bot.guilds:
         # PRINT THE SERVER'S ID AND NAME.
         print(f"- {guild.id} (name: {guild.name})")
@@ -113,7 +110,7 @@ async def on_ready():
         # INCREMENTS THE GUILD COUNTER.
         guild_count = guild_count + 1
 
-        FileAction.server_dir_check(guild.id)
+        FileAction.server_files_check(guild.id)
 
     # PRINTS HOW MANY GUILDS / SERVERS THE BOT IS IN.
     print("SampleDiscordBot is in " + str(guild_count) + " guilds.\n")
@@ -130,12 +127,14 @@ async def on_ready():
     finally:
         pass
 
+    # import urllib.request as web
     # current_avatar = bot.user.avatar
     # print(f'{current_avatar.key}\n{current_avatar.url}')
     # file_url = current_avatar.url[0:current_avatar.url.find("?")]
     # print(f'{file_url}')
     # web.urlretrieve(file_url, current_avatar.key + ".png", progress_bar)
 
+    # import requests
     # response = requests.get(file_url, headers=headers)
     # if response.status_code == 200:
     #     FileAction(f'{current_avatar.key}.png', "wb", response.content)
@@ -143,25 +142,17 @@ async def on_ready():
     # else:
     #     print(f"Ошибка при загрузке аватара: {response.status_code}")
 
-    with open("cat.gif", "rb") as f:
-        new_avatar = f.read()
-    await bot.user.edit(avatar=new_avatar)
+    # выгрузка аватара
+    # with open("cat.gif", "rb") as f:
+    #     new_avatar = f.read()
+    # await bot.user.edit(avatar=new_avatar)
 
-    # with open("winter_forest_new.gif", "rb") as f:
-    #     new_banner = f.read()
-    # await bot.user.edit(banner=new_banner)
-
+    # добавление команд в обработку дисом
     try:
         commands_list = await bot.tree.sync()
         print(f'Синхронизировано команд: {len(commands_list)} - {commands_list}')
     except Exception as e:
         print(e)
-
-# @bot.command(name="hello")
-# #def hello(interaction: discord.Interaction):
-# #    await interaction.response.
-# async def foo(ctx, arg):
-#     await ctx.send(arg)
 
 @bot.hybrid_command(name="daily")
 async def test(ctx):
@@ -184,8 +175,6 @@ async def test(ctx):
 
 
 
-
-# EVENT LISTENER FOR WHEN A NEW MESSAGE IS SENT TO A CHANNEL.
 @bot.event
 async def on_message(message):
     # CHECKS IF THE MESSAGE THAT WAS SENT IS EQUAL TO "HELLO".
@@ -259,9 +248,6 @@ async def on_member_remove(user_gone):
     # и возвращает форматированный и готовый к отправке вариант
     await channel_obj_farewall.send(f'{FarewallManager.get_formated_phrase(user_gone.mention)}')
     print('Done')
-
-
-# EXECUTES THE BOT WITH THE SPECIFIED TOKEN. TOKEN HAS BEEN REMOVED AND USED JUST AS AN EXAMPLE.
 
 
 if __name__ == '__main__':

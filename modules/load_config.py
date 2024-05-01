@@ -10,5 +10,7 @@ with FileAction(config_file_path, "r") as file:
 # server_data_path = config["server_data_path"]
 # localization_path = config["localization_path"]
 
+
+
 if __name__ == '__main__':
     print(config["current_locale"])

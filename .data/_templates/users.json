@@ -1,0 +1,12 @@
+{
+        "user_global_id": [
+                "global_nickname",
+                {
+                        "date_joined": "1231-23-12",
+                        "birthday": "1990-07-21",
+                        "last_message_date": "1000-10-10",
+                        "money": 5123,
+                        "reputaion": 666
+                }
+        ]
+}

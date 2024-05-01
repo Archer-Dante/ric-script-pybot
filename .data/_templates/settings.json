@@ -1,0 +1,15 @@
+{
+        "autokick": [
+                "1",
+                {
+                        "channel_id1": [
+                                "message_id1",
+                                "react_code1"
+                        ],
+                        "channel_id2": [
+                                "message_id2",
+                                "react_code2"
+                        ]
+                }
+        ]
+}

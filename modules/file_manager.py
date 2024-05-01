@@ -3,21 +3,21 @@ import shutil
 
 
 class FileAction:
-
-    def __init__(self, filename, openmethod, content_to_save=None):
+    def __init__(self, filename, openmethod):
+        self.filename = filename
+        self.openmethod = openmethod
+        self.file_object = None
         if not os.path.exists(filename) and os.path.isfile(filename):
-            # if not os.path.exists(os.path.dirname(filename)) and os.path.isfile(filename):
             raise Exception("Файла не существует. Нужно сначала его создать!")
-        # .file_object - даёт название тому, как мы будем обращаться
-        self.file_object = open(filename, openmethod)
-        if openmethod.find("r") >= 0 and content_to_save is not None:
-            self.file_object.write(content_to_save)
 
     def __enter__(self):
+        self.file_object = open(self.filename, self.openmethod)
         return self.file_object
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.file_object.close()
+        if self.file_object:
+            self.file_object.close()
+
 
     @classmethod
     def server_files_check(cls, id_as_folder_name: int):

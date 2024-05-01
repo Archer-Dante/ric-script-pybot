@@ -1,4 +1,6 @@
 # IMPORT DISCORD.PY. ALLOWS ACCESS TO DISCORD'S API.
+import pathlib
+import sys
 import urllib.request
 
 import discord
@@ -7,8 +9,10 @@ from discord.ext import commands
 import os
 from dotenv import load_dotenv
 from datetime import datetime
-from modules.web_manager import progress_bar
+import json
+import configparser
 
+from modules.web_manager import progress_bar
 
 # импорт своего класса по работе с файлами
 from modules.file_manager import FileAction
@@ -34,22 +38,6 @@ headers = {
 bot = commands.Bot(command_prefix=".", intents=discord.Intents.all())
 
 print(f'Выбранная локализация: {config["current_locale"]}')
-
-
-class KickedTotal:
-    # сколько всего кикнуто за текущую сессию
-    value: int = 0
-
-    @classmethod
-    def increment(cls) -> str:
-        cls.value += 1
-        return f"{cls.value}) | "
-
-    @classmethod
-    def get_value(cls) -> int:
-        cls.increment()
-        return cls.value
-
 
 class FarewallManager:
     userid_list: list = []
@@ -96,8 +84,100 @@ emoji_to_work_with_id = 1229599440352968725
 # кана куда писать прощальные сообщения
 channel_id_to_farewall = 790367801532612619
 
+class ServerDataInterface:
+    data: dict[str] = {}
 
-# EVENT LISTENER FOR WHEN THE BOT HAS SWITCHED FROM OFFLINE TO ONLINE.
+    def __init__(self, server_id):
+
+        server_id = str(server_id)
+        self.data[server_id]: dict = {}  # print(self.data)
+        self.config_dir = pathlib.Path(os.path.join(config["server_data_path"], server_id))  # print(self.config_dir)
+        # self.data[str(server_id)]["server_path"] = str(self.config_dir)
+        # self.data[str(server_id)]["config_files"]: dict = {}
+        # self.data[str(server_id)]["config_files"]["settings.json"] = {"path_to_file":{}}
+        # self.data[str(server_id)]["config_files"]["settings.json"]["path_to_file"] = {}
+
+        for file_path in self.config_dir.glob('*'):
+            # выборка чтобы только json и только не пустые файлы
+            if str(file_path).find(".json") >= 0 and os.path.getsize(file_path) >= 0:
+                print(file_path)
+                section = file_path.stem
+                with FileAction(file_path, "r") as file:
+                    try:
+                        cfg = json.loads(file.read())
+                        self.root_sid(server_id)[section] = cfg
+                    except Exception as e:
+                        print(f'{Bcolors.WARNING}Не удалось спарсить {file.name} '
+                              f'- возможно файл не соответствует стандарту или пустой{Bcolors.ENDC}')
+
+        print("")
+
+    # путь до корня текущего сервера
+    def root_sid(self, s_id) -> object:
+        return self.data[s_id]
+        pass
+
+    # переработать в get_что-то с вызовом одной и той же функции, где достаётся значение согласно опции
+    @classmethod
+    def get_stats(cls, s_id, search_for_key):
+        cfg_branch = cls.data[str(s_id)]["stats"]
+        # print(cfg_branch)
+        value = cfg_branch.get(search_for_key, None)
+        if value is None:
+            return f'<Ошибка: значение не найдено>'
+        else:
+            return value
+
+    @classmethod
+    def save_cfgs(cls, s_id):
+        print(str(s_id))
+        print(cls.data)
+        for cfg in cls.data[str(s_id)]:
+            # if cfg == "settings":
+            save_path = os.path.join(config["server_data_path"], str(s_id), cfg)
+            with FileAction(f'{save_path}.json', "w") as json_file:
+                try:
+                    # cls.autokick_toggle(cls, s_id)
+                    json.dump(cls.data[str(s_id)][cfg], json_file, indent=8)
+                except Exception as e:
+                    print(f"Ошибка: {e}")
+                    json.dump(cls.data[str(s_id)][cfg], json_file, indent=8)
+                    # Здесь вы можете добавить логику для обработки ошибки, например, не перезаписывать файл
+        pass
+
+    @staticmethod
+    def autokick_toggle(cls, s_id):
+        value = cls.data[str(s_id)]["settings"]["autokick"]
+        print(f'Было: {value[0]}, сервер {s_id}')
+        if int(value[0]) == 1:
+            value[0] = "0"
+        else:
+            value[0] = "1"
+        print(f'Было: {value[0]}, сервер {s_id}')
+        pass
+
+    @classmethod
+    def autokick_increase(cls, s_id):
+        cfg_branch = cls.data[str(s_id)]["stats"]
+        value = cfg_branch["autokick_count"]
+        print("Было: ", value[0])
+        cfg_branch["autokick_count"] = str(int(value) + 1)
+        print("Стало после нового кика: ", value[0])
+        print("Секция конфига: \n", cls.data[str(s_id)]["stats"])
+        cls.save_cfgs(s_id)
+        pass
+
+
+# ServerDataInterface(364527877716443148)
+# ServerDataInterface(846356735487770627)
+# print(json.dumps(ServerDataInterface.data, indent=4))
+# ServerDataInterface.save_cfgs(364527877716443148)
+# ServerDataInterface.autokick_increase(364527877716443148)
+# print(ServerDataInterface.get_stats(364527877716443148, "autokick_count") )
+
+# sys.exit()
+
+
 @bot.event
 async def on_ready():
     guild_count = 0
@@ -111,9 +191,11 @@ async def on_ready():
         guild_count = guild_count + 1
 
         FileAction.server_files_check(guild.id)
+        ServerDataInterface(guild.id)
+        # SavedServerData.get_autokicked_total_value(os.path.join(config["server_data_path"],str(guild.id),"stats","stats.json"))
 
-    # PRINTS HOW MANY GUILDS / SERVERS THE BOT IS IN.
-    print("SampleDiscordBot is in " + str(guild_count) + " guilds.\n")
+    # Всего гильдий
+    print("Бот находится в " + str(guild_count) + " гильдиях.\n")
 
     # т.к. нельзя получить сообщение без канала, а канал или сообщение без события, то зная ID канала
     # получаем сначала объект канала, потом объект сообщения, а потом ставим на него смайл указав ID смайла
@@ -154,9 +236,11 @@ async def on_ready():
     except Exception as e:
         print(e)
 
+
 @bot.hybrid_command(name="daily")
 async def test(ctx):
     await ctx.send("Daily yet not implemented! Stay tuned!!")
+
 
 # @bot.hybrid_group(fallback="get")
 # async def tag(ctx, name):
@@ -166,13 +250,23 @@ async def test(ctx):
 # async def create(ctx, name):
 #     await ctx.send(f"Created tag: {name}")
 
+@bot.hybrid_command(name="bots-kicked")
+async def test(ctx):
+    # await ctx.send("Daily yet not implemented! Stay tuned!!")
+    # print(ctx.guild_id)
+    try:
+        await ctx.send(f"`Всего ботов наказано: {ServerDataInterface.get_stats(ctx.guild.id,'autokick_count')}`")
+    except Exception as e:
+        print(e)
 
 
-
-
-
-
-
+# @bot.hybrid_group(fallback="get")
+# async def tag(ctx, name):
+#     await ctx.send(f"Showing tag: {name}")
+#
+# @tag.command()
+# async def create(ctx, name):
+#     await ctx.send(f"Created tag: {name}")
 
 
 @bot.event
@@ -223,9 +317,10 @@ async def on_raw_reaction_add(reaction):  # должно работать даж
                     FarewallManager.add_to_list(reaction.member.id)  # добавляем если отсутствует
 
                 await channel_obj_farewall.send(f'{FarewallManager.get_formated_phrase(reaction.member.mention)}')
-                await channel_obj_farewall.send(f'- `подстрелено негодников: {KickedTotal.get_value()}`')
+                ServerDataInterface.autokick_increase(reaction.guild_id)
+                kicked_total = ServerDataInterface.get_stats(reaction.guild_id, "autokick_count")
+                await channel_obj_farewall.send(f'- `подстрелено негодников: {kicked_total}`')
                 await guild_obj.kick(reaction.member)
-
     print(f'\n\n')
 
 

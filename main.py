@@ -1,78 +1,30 @@
-# IMPORT DISCORD.PY. ALLOWS ACCESS TO DISCORD'S API.
-import pathlib
-import sys
-import urllib.request
-
 import discord
 from discord import app_commands
 from discord.ext import commands
+import pathlib
 import os
+import json
+from discord.ext.commands import BucketType
 from dotenv import load_dotenv
 from datetime import datetime
-import json
-import configparser
+from modules.file_manager import FileAction  # импорт своего класса по работе с файлами
+from modules.load_config import config  # импорт результата отдельной загрузки для главного конфига
+from modules.main_const_and_cls import Bcolors  # импорт кодов цветов и форматирования для консоли
+from modules.main_const_and_cls import FarewallManager  # импорт генератора сообщений
 
-from modules.web_manager import progress_bar
+# import configparser
+# from modules.web_manager import progress_bar
 
-# импорт своего класса по работе с файлами
-from modules.file_manager import FileAction
-# импорт своей функции по генерации фраз
-from modules.message_manager import get_phrase
-# импорт результата отдельной загрузки для главного конфига
-from modules.load_config import config
-
-# LOADS THE .ENV FILE THAT RESIDES ON THE SAME LEVEL AS THE SCRIPT.
 load_dotenv()
-# GRAB THE API TOKEN FROM THE .ENV FILE.
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-# GETS THE CLIENT OBJECT FROM DISCORD.PY. CLIENT IS SYNONYMOUS WITH BOT.
 
-# юзерагент для запросов на скачку
-headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
-}
+# юзерагент для запросов
+headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                         'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'}
 
-# intents = discord.Intents.default()
-# intents.members = True
-# bot = discord.Client(intents=intents)
 bot = commands.Bot(command_prefix=".", intents=discord.Intents.all())
 
 print(f'Выбранная локализация: {config["current_locale"]}')
-
-class FarewallManager:
-    userid_list: list = []
-
-    @classmethod
-    def add_to_list(cls, userid: int):
-        cls.userid_list.append(userid)
-        return
-
-    @classmethod
-    def in_list(cls, userid: int):
-        return True if userid in cls.userid_list else False
-
-    @classmethod
-    def remove_from_list(cls, userid):
-        cls.userid_list.remove(userid)
-        return
-
-    @classmethod
-    # принимает mention в виде строки и форматирует до конечного сообщения
-    def get_formated_phrase(cls, user: str):
-        return get_phrase("**" + user + "**")
-
-
-class Bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
-
 
 # сообщение которое нужно заблочить
 message_id_to_ban = 1072806217824600074
@@ -83,6 +35,7 @@ emoji_to_work_with = "<a:z_bye:1229599440352968725>"
 emoji_to_work_with_id = 1229599440352968725
 # кана куда писать прощальные сообщения
 channel_id_to_farewall = 790367801532612619
+
 
 class ServerDataInterface:
     data: dict[str] = {}
@@ -168,13 +121,6 @@ class ServerDataInterface:
         pass
 
 
-# ServerDataInterface(364527877716443148)
-# ServerDataInterface(846356735487770627)
-# print(json.dumps(ServerDataInterface.data, indent=4))
-# ServerDataInterface.save_cfgs(364527877716443148)
-# ServerDataInterface.autokick_increase(364527877716443148)
-# print(ServerDataInterface.get_stats(364527877716443148, "autokick_count") )
-
 # sys.exit()
 
 
@@ -228,8 +174,6 @@ async def on_ready():
     # with open("cat.gif", "rb") as f:
     #     new_avatar = f.read()
     # await bot.user.edit(avatar=new_avatar)
-
-    # добавление команд в обработку дисом
     try:
         commands_list = await bot.tree.sync()
         print(f'Синхронизировано команд: {len(commands_list)} - {commands_list}')
@@ -237,11 +181,18 @@ async def on_ready():
         print(e)
 
 
-@bot.hybrid_command(name="daily")
+@bot.hybrid_command(name="daily", descripion="Получить ежедневный бонус")
 async def test(ctx):
+    print("test")
     await ctx.send("Daily yet not implemented! Stay tuned!!")
 
 
+# @bot.tree.command(name="www")
+# async def test2(interaction: discord.Interaction):
+#     # noinspection PyUnresolvedReferences
+#     await interaction.response.send_message(f" 234 ")
+
+
 # @bot.hybrid_group(fallback="get")
 # async def tag(ctx, name):
 #     await ctx.send(f"Showing tag: {name}")
@@ -250,31 +201,54 @@ async def test(ctx):
 # async def create(ctx, name):
 #     await ctx.send(f"Created tag: {name}")
 
-@bot.hybrid_command(name="bots-kicked")
+# @bot.command(pass_context=True)
+# async def test_legacy(ctx):
+#     await ctx.send(f"The calculation result is")
+#     await test2(ctx)
+#     pass
+
+
+@bot.hybrid_command(name="bots-kicked", description="Показать количество автоматически кикнутых ботов")
+@commands.cooldown(1, 10, BucketType.user)
+@discord.ext.commands.guild_only()
 async def test(ctx):
-    # await ctx.send("Daily yet not implemented! Stay tuned!!")
-    # print(ctx.guild_id)
-    try:
-        await ctx.send(f"`Всего ботов наказано: {ServerDataInterface.get_stats(ctx.guild.id,'autokick_count')}`")
-    except Exception as e:
-        print(e)
+    await ctx.send(f"`Всего ботов наказано: {ServerDataInterface.get_stats(ctx.guild.id, 'autokick_count')}`")
 
 
-# @bot.hybrid_group(fallback="get")
-# async def tag(ctx, name):
-#     await ctx.send(f"Showing tag: {name}")
-#
-# @tag.command()
-# async def create(ctx, name):
-#     await ctx.send(f"Created tag: {name}")
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandOnCooldown):
+        if ctx.command.name == 'bots-kicked':
+            await ctx.send('`Вы слишком часто используете команду, попробуйте снова через 10 секунд`')
+        else:
+            await ctx.send('`Ошибка кулдауна`')
+
+
+@bot.command(name="Sync", description="Sync slash commands")
+@commands.is_owner()
+@commands.guild_only()
+async def sync(ctx):
+    ctx.bot.tree.clear_commands(guild=ctx.guild)
+    ctx.bot.tree.copy_global_to(guild=ctx.guild)
+    synced = await ctx.bot.tree.sync(guild=ctx.guild)
+    print(synced)
+    await ctx.reply(f"Synced {len(synced)} commands", mention_author=False)
 
 
 @bot.event
 async def on_message(message):
-    # CHECKS IF THE MESSAGE THAT WAS SENT IS EQUAL TO "HELLO".
-    if message.content == "blablapew":
-        # SENDS BACK A MESSAGE TO THE CHANNEL.
+    print(bot.command_prefix)
+    if message.content.startswith(bot.command_prefix):
         await message.channel.send("hey dirtbag")
+
+
+# @bot.hybrid_group(fallback="get")
+# async def tag(ctx, name):
+#     await ctx.send(f"Showing tag: {name}")
+#
+# @tag.command()
+# async def create(ctx, name):
+#     await ctx.send(f"Created tag: {name}")
 
 
 @bot.event

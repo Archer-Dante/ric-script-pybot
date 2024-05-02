@@ -11,6 +11,7 @@ from modules.file_manager import FileAction  # импорт своего кла�
 from modules.load_config import config  # импорт результата отдельной загрузки для главного конфига
 from modules.main_const_and_cls import Bcolors  # импорт кодов цветов и форматирования для консоли
 from modules.main_const_and_cls import FarewallManager  # импорт генератора сообщений
+from modules.main_const_and_cls import CommandsNames  # импорт названия команд из констант внутри класса
 
 # import configparser
 # from modules.web_manager import progress_bar
@@ -22,19 +23,9 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
                          'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'}
 
-bot = commands.Bot(command_prefix=".", intents=discord.Intents.all())
+bot = commands.Bot(command_prefix="рик", intents=discord.Intents.all())
 
 print(f'Выбранная локализация: {config["current_locale"]}')
-
-# сообщение которое нужно заблочить
-message_id_to_ban = 1072806217824600074
-# канал где это сообщение для блока
-channel_id_with_message = 925204884054229033
-# какой смайл будет прокать работу кода
-emoji_to_work_with = "<a:z_bye:1229599440352968725>"
-emoji_to_work_with_id = 1229599440352968725
-# кана куда писать прощальные сообщения
-channel_id_to_farewall = 790367801532612619
 
 
 class ServerDataInterface:
@@ -82,11 +73,20 @@ class ServerDataInterface:
             return value
 
     @classmethod
+    def get_settings(cls, s_id, search_for_key):
+        cfg_branch = cls.data[str(s_id)]["settings"]
+        # print(cfg_branch)
+        value = cfg_branch.get(search_for_key, None)
+        if value is None:
+            return f'<Ошибка: значение не найдено>'
+        else:
+            return value
+
+    @classmethod
     def save_cfgs(cls, s_id):
         print(str(s_id))
         print(cls.data)
         for cfg in cls.data[str(s_id)]:
-            # if cfg == "settings":
             save_path = os.path.join(config["server_data_path"], str(s_id), cfg)
             with FileAction(f'{save_path}.json', "w") as json_file:
                 try:
@@ -95,7 +95,6 @@ class ServerDataInterface:
                 except Exception as e:
                     print(f"Ошибка: {e}")
                     json.dump(cls.data[str(s_id)][cfg], json_file, indent=8)
-                    # Здесь вы можете добавить логику для обработки ошибки, например, не перезаписывать файл
         pass
 
     @staticmethod
@@ -121,26 +120,39 @@ class ServerDataInterface:
         pass
 
 
+SDI = ServerDataInterface  # сокращённый вариант
+
+
+async def hybrid_cmd_router(ctx_or_msg, reply):
+    if type(ctx_or_msg) is discord.ext.commands.context.Context:
+        await ctx_or_msg.send(reply)
+    elif type(ctx_or_msg) is discord.message.Message:
+        await ctx_or_msg.channel.send(reply)
+
+
 # sys.exit()
+
+# сообщение которое нужно заблочить
+message_id_to_ban = 1072806217824600074
+# канал где это сообщение для блока
+channel_id_with_message = 925204884054229033
+# какой смайл будет прокать работу кода
+emoji_to_work_with = "<a:z_bye:1229599440352968725>"
+emoji_to_work_with_id = 1229599440352968725
+# кана куда писать прощальные сообщения
+channel_id_to_farewall = 790367801532612619
 
 
 @bot.event
 async def on_ready():
     guild_count = 0
 
-    # перебор всех гильдий где находится бот, и создание для них папок в случае их отсутствия
     for guild in bot.guilds:
-        # PRINT THE SERVER'S ID AND NAME.
         print(f"- {guild.id} (name: {guild.name})")
-
-        # INCREMENTS THE GUILD COUNTER.
         guild_count = guild_count + 1
-
         FileAction.server_files_check(guild.id)
         ServerDataInterface(guild.id)
-        # SavedServerData.get_autokicked_total_value(os.path.join(config["server_data_path"],str(guild.id),"stats","stats.json"))
 
-    # Всего гильдий
     print("Бот находится в " + str(guild_count) + " гильдиях.\n")
 
     # т.к. нельзя получить сообщение без канала, а канал или сообщение без события, то зная ID канала
@@ -182,7 +194,7 @@ async def on_ready():
 
 
 @bot.hybrid_command(name="daily", descripion="Получить ежедневный бонус")
-async def test(ctx):
+async def cmd_daily(ctx):
     print("test")
     await ctx.send("Daily yet not implemented! Stay tuned!!")
 
@@ -193,77 +205,42 @@ async def test(ctx):
 #     await interaction.response.send_message(f" 234 ")
 
 
-# @bot.hybrid_group(fallback="get")
-# async def tag(ctx, name):
-#     await ctx.send(f"Showing tag: {name}")
-#
-# @tag.command()
-# async def create(ctx, name):
-#     await ctx.send(f"Created tag: {name}")
-
-# @bot.command(pass_context=True)
-# async def test_legacy(ctx):
-#     await ctx.send(f"The calculation result is")
-#     await test2(ctx)
-#     pass
-
-
-@bot.hybrid_command(name="bots-kicked", description="Показать количество автоматически кикнутых ботов")
+@bot.hybrid_command(name=CommandsNames.BOTS_KICKED, description="Показать количество автоматически кикнутых ботов")
 @commands.cooldown(1, 10, BucketType.user)
 @discord.ext.commands.guild_only()
-async def test(ctx):
-    await ctx.send(f"`Всего ботов наказано: {ServerDataInterface.get_stats(ctx.guild.id, 'autokick_count')}`")
+async def cmd_bots_kicked(ctx):
+    reply = f'`Всего ботов наказано: {ServerDataInterface.get_stats(ctx.guild.id, 'autokick_count')}`'
+    await hybrid_cmd_router(ctx, reply)
+
+
+@bot.event
+async def on_message(message):
+    if message.author.bot: return
+    prefix = SDI.get_settings(message.guild.id, "prefix")
+    if message.content.startswith(f'{prefix}{CommandsNames.BOTS_KICKED}'): await cmd_bots_kicked(message)
 
 
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandOnCooldown):
         if ctx.command.name == 'bots-kicked':
-            await ctx.send('`Вы слишком часто используете команду, попробуйте снова через 10 секунд`')
+            if str(error).find("in ") != -1:
+                await ctx.send(f'`Вы слишком часто используете команду, попробуйте снова через '
+                               f'{str(error)[str(error).find("in ") + 6:]}`')
+            else:
+                await ctx.send(f'`Вы слишком часто используете команду, попробуйте позже')
         else:
             await ctx.send('`Ошибка кулдауна`')
 
 
-@bot.command(name="Sync", description="Sync slash commands")
-@commands.is_owner()
-@commands.guild_only()
-async def sync(ctx):
-    ctx.bot.tree.clear_commands(guild=ctx.guild)
-    ctx.bot.tree.copy_global_to(guild=ctx.guild)
-    synced = await ctx.bot.tree.sync(guild=ctx.guild)
-    print(synced)
-    await ctx.reply(f"Synced {len(synced)} commands", mention_author=False)
-
-
 @bot.event
-async def on_message(message):
-    print(bot.command_prefix)
-    if message.content.startswith(bot.command_prefix):
-        await message.channel.send("hey dirtbag")
-
-
-# @bot.hybrid_group(fallback="get")
-# async def tag(ctx, name):
-#     await ctx.send(f"Showing tag: {name}")
-#
-# @tag.command()
-# async def create(ctx, name):
-#     await ctx.send(f"Created tag: {name}")
-
-
-@bot.event
-# async def on_reaction_add(reaction, user): # только на новые сообщения
 async def on_raw_reaction_add(reaction):  # должно работать даже на тех, что не в кэше
-    if reaction.member.bot:
-        return
-
+    if reaction.member.bot: return
     channel_id = bot.get_channel(reaction.channel_id)
     message_id = await channel_id.fetch_message(reaction.message_id)
     message_bdy = message_id.content
-
     time_string = f'{datetime.now().date().strftime("%d-%m-%Y")} - {datetime.now().time().strftime("%H:%M:%S")}'
 
-    # голый запрос без await не успевает вернуться, вызывает ошибку
     print(
         f'{Bcolors.BOLD}Timestamp:{Bcolors.ENDC} {Bcolors.OKGREEN}{time_string}{Bcolors.ENDC}\n'
         f'{Bcolors.BOLD}ID Сервера:{Bcolors.ENDC} "{await bot.fetch_guild(reaction.guild_id)}" - {reaction.guild_id}\n'
@@ -274,10 +251,6 @@ async def on_raw_reaction_add(reaction):  # должно работать даж
         f'https://discord.com/channels/{reaction.guild_id}/{reaction.channel_id}/{reaction.message_id}\n'
         f'{Bcolors.BOLD}Тело сообщения:{Bcolors.ENDC}\n{Bcolors.OKCYAN}{message_bdy}{Bcolors.ENDC}\n'
         f'{Bcolors.BOLD}Автор сообщения: {Bcolors.ENDC}{message_id.author.display_name} ({message_id.author.global_name})')
-
-    # say_goodbye = get_phrase(reaction.member.display_name)
-    # print(f'**{say_goodbye}**')
-    # print(KickedTotal.get_value())
 
     for x in reaction.member.roles:
         if x.name == "Criminals":
@@ -311,8 +284,7 @@ async def on_member_remove(user_gone):
         return
     print('Нет, он вышел сам или был кикнут вручную.')
 
-    # получение канала куда постить
-    channel_obj_farewall = await bot.fetch_channel(channel_id_to_farewall)
+    channel_obj_farewall = await bot.fetch_channel(channel_id_to_farewall)  # получение канала куда постить
     # отправка сообщения, делая запрос в класс, который в свою очередь запрашивает рандом из другой функции
     # и возвращает форматированный и готовый к отправке вариант
     await channel_obj_farewall.send(f'{FarewallManager.get_formated_phrase(user_gone.mention)}')

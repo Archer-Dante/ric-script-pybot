@@ -84,8 +84,8 @@ class ServerDataInterface:
 
     @classmethod
     def save_cfgs(cls, s_id):
-        print(str(s_id))
-        print(cls.data)
+        # print(str(s_id))
+        # print(cls.data)
         for cfg in cls.data[str(s_id)]:
             save_path = os.path.join(config["server_data_path"], str(s_id), cfg)
             with FileAction(f'{save_path}.json', "w") as json_file:
@@ -97,7 +97,27 @@ class ServerDataInterface:
                     json.dump(cls.data[str(s_id)][cfg], json_file, indent=8)
         pass
 
-    @staticmethod
+
+    @classmethod
+    def toggle_settings(cls, s_id, setting_name):
+        print("Переключаю...") # leave_notifications_enabled
+        value = cls.data[str(s_id)]["settings"]
+        print(f'Было: {value[setting_name]}, сервер {s_id}')
+        if value[setting_name] == "True":
+            value[setting_name] = "False"
+        else:
+            value[setting_name] = "True"
+        print(f'Стало: {value[setting_name]}, сервер {s_id}')
+        print(json.dumps(cls.data[str(s_id)]["settings"], indent=8))
+        cls.save_cfgs(s_id)
+        pass
+
+    # возможно следует сделать из этого "def toggle_dict", т.к. одним автокиком не обойтись, а структура данных
+    # может использоваться для разных опций
+    # либо нужен полный обработчик, который будет определять, если ли в паре КЛЮЧ-ЗНАЧЕНИЕ что-то глубже и сложнее
+    # чем просто значение, а именно: словарь, список или кортеж.
+    # если ничего из этого нет - простая обработка, если есть - сложнее.
+    @classmethod
     def autokick_toggle(cls, s_id):
         value = cls.data[str(s_id)]["settings"]["autokick"]
         print(f'Было: {value[0]}, сервер {s_id}')
@@ -106,6 +126,7 @@ class ServerDataInterface:
         else:
             value[0] = "1"
         print(f'Было: {value[0]}, сервер {s_id}')
+        cls.save_cfgs(s_id)
         pass
 
     @classmethod
@@ -140,7 +161,7 @@ channel_id_with_message = 925204884054229033
 emoji_to_work_with = "<a:z_bye:1229599440352968725>"
 emoji_to_work_with_id = 1229599440352968725
 # кана куда писать прощальные сообщения
-channel_id_to_farewall = 790367801532612619
+channel_id_to_farewall = 735409258904027166 # 735409258904027166 - тестовый # 790367801532612619 - используемый
 
 
 @bot.event
@@ -205,7 +226,24 @@ async def cmd_daily(ctx):
 #     await interaction.response.send_message(f" 234 ")
 
 
-@bot.hybrid_command(name=CommandsNames.BOTS_KICKED, description="Показать количество автоматически кикнутых ботов")
+@bot.hybrid_command(name=CommandsNames.TOGGLE,
+                    description="Переключить настройку в указанное или противоположное значение")
+@commands.cooldown(1, 4, BucketType.user)
+@discord.ext.commands.guild_only()
+@discord.ext.commands.has_permissions(administrator=True)
+async def cmd_toggle_setting(ctx, setting):
+    if setting == "leave_notifications_enabled":
+
+        SDI.toggle_settings(ctx.guild.id, setting)
+
+        after = f'Теперь настройка {setting} переключена в положение **{SDI.get_settings(ctx.guild.id, setting)}**'
+        await hybrid_cmd_router(ctx, after)
+        pass
+    pass
+
+
+@bot.hybrid_command(name=CommandsNames.BOTS_KICKED,
+                    description="Показать количество автоматически кикнутых ботов")
 @commands.cooldown(1, 10, BucketType.user)
 @discord.ext.commands.guild_only()
 async def cmd_bots_kicked(ctx):
@@ -283,6 +321,10 @@ async def on_member_remove(user_gone):
         print(f'Список ID после: {FarewallManager.userid_list}')
         return
     print('Нет, он вышел сам или был кикнут вручную.')
+
+    if SDI.get_settings(user_gone.guild.id, "leave_notifications_enabled") != "True":
+        print('Сообщения о выходах отключены')
+        return
 
     channel_obj_farewall = await bot.fetch_channel(channel_id_to_farewall)  # получение канала куда постить
     # отправка сообщения, делая запрос в класс, который в свою очередь запрашивает рандом из другой функции

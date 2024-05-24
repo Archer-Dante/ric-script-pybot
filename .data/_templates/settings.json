@@ -12,5 +12,6 @@
                         ]
                 }
         ],
-        "prefix": "!!"
+        "prefix": "!!",
+        "leave_notifications_enabled": false
 }

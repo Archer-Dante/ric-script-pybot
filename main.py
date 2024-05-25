@@ -1,5 +1,7 @@
+import asyncio
+
 import discord
-from discord import app_commands
+from discord import app_commands, Colour
 from discord.ext import commands
 import pathlib
 import os
@@ -12,6 +14,11 @@ from modules.load_config import config  # импорт результата от
 from modules.main_const_and_cls import Bcolors  # импорт кодов цветов и форматирования для консоли
 from modules.main_const_and_cls import FarewallManager  # импорт генератора сообщений
 from modules.main_const_and_cls import CommandsNames  # импорт названия команд из констант внутри класса
+from modules.tools import get_average_color  # получение усреднённого цвета RGB
+
+import requests
+from bs4 import BeautifulSoup
+from collections import defaultdict
 
 # import configparser
 # from modules.web_manager import progress_bar
@@ -30,6 +37,7 @@ print(f'Выбранная локализация: {config["current_locale"]}')
 
 class ServerDataInterface:
     data: dict[str] = {}
+    yt_cache = defaultdict(list)
 
     def __init__(self, server_id):
 
@@ -50,8 +58,8 @@ class ServerDataInterface:
                     try:
                         cfg = json.loads(file.read())
                         self.root_sid(server_id)[section] = cfg
-                    except Exception as e:
-                        print(f'{Bcolors.WARNING}Не удалось спарсить {file.name} '
+                    except Exception:
+                        print(f'{Bcolors.WARNING}Не удалось спарсить {file.name}: '
                               f'- возможно файл не соответствует стандарту или пустой{Bcolors.ENDC}')
 
         print("")
@@ -64,6 +72,13 @@ class ServerDataInterface:
     # переработать в get_что-то с вызовом одной и той же функции, где достаётся значение согласно опции
     @classmethod
     def get_stats(cls, s_id, search_for_key):
+        """
+        Возвращает значение указанного параметра из файла stats.json
+        Загружает значение из текущей памяти.
+        :param s_id: id сервера-гильдии discord
+        :param search_for_key: значение, которое нужно найти
+        :return:
+        """
         cfg_branch = cls.data[str(s_id)]["stats"]
         # print(cfg_branch)
         value = cfg_branch.get(search_for_key, None)
@@ -73,14 +88,17 @@ class ServerDataInterface:
             return value
 
     @classmethod
-    def get_settings(cls, s_id, search_for_key):
+    def get_settings(cls, s_id, *args):
         cfg_branch = cls.data[str(s_id)]["settings"]
+        for value in args:
+            if value in cfg_branch:
+                # print(cfg_branch[str(value)])
+                cfg_branch = cfg_branch[value]
+            else:
+                # print(f'Значение {value} не найдено в {cfg_branch}')
+                pass
         # print(cfg_branch)
-        value = cfg_branch.get(search_for_key, None)
-        if value is None:
-            return f'<Ошибка: значение не найдено>'
-        else:
-            return value
+        return cfg_branch
 
     @classmethod
     def save_cfgs(cls, s_id):
@@ -97,10 +115,9 @@ class ServerDataInterface:
                     json.dump(cls.data[str(s_id)][cfg], json_file, indent=8)
         pass
 
-
     @classmethod
     def toggle_settings(cls, s_id, setting_name):
-        print("Переключаю...") # leave_notifications_enabled
+        print("Переключаю...")  # leave_notifications_enabled
         value = cls.data[str(s_id)]["settings"]
         print(f'Было: {value[setting_name]}, сервер {s_id}')
         if value[setting_name] == "True":
@@ -140,6 +157,44 @@ class ServerDataInterface:
         cls.save_cfgs(s_id)
         pass
 
+    @classmethod
+    def get_total_yt_checks(cls):
+        value = 0
+        for server in cls.data:
+            for link in cls.data[server]["settings"]["streams"]["streaming_channels"]:
+                if "youtube" in link:
+                    value = value + 1
+        return int(value)
+
+    @classmethod
+    def update_yt_cache(cls, ch_id, video):
+        """
+        Кэширует стримы, которые уже были опубликованы, чтобы не публиковаться повторно.
+        Сбрасывается при перезапуске бота.
+        :param ch_id: id канала, где был пост
+        :param video: ссылка на видео или код видео
+        """
+        # cls.yt_cache.append(video)
+        cls.yt_cache[ch_id].append(video)
+        print(cls.yt_cache)
+
+
+    @classmethod
+    def check_yt_cache(cls, ch_id, video):
+        """
+        Проверяет есть ли такое видео в кэше уже ранее опубликованных видео.
+        Используется для проверки, чтобы избежать повторных постов.
+        :param ch_id:
+        :param video: ссылка на видео или код видео
+        :return: Bool
+        """
+        cached = False
+        for x in cls.yt_cache[ch_id]:
+            if x == video:
+                print(f'Уже кешировано: {x}')
+                cached = True
+        return cached
+
 
 SDI = ServerDataInterface  # сокращённый вариант
 
@@ -161,7 +216,7 @@ channel_id_with_message = 925204884054229033
 emoji_to_work_with = "<a:z_bye:1229599440352968725>"
 emoji_to_work_with_id = 1229599440352968725
 # кана куда писать прощальные сообщения
-channel_id_to_farewall = 735409258904027166 # 735409258904027166 - тестовый # 790367801532612619 - используемый
+channel_id_to_farewall = 735409258904027166  # 735409258904027166 - тестовый # 790367801532612619 - используемый
 
 
 @bot.event
@@ -207,11 +262,18 @@ async def on_ready():
     # with open("cat.gif", "rb") as f:
     #     new_avatar = f.read()
     # await bot.user.edit(avatar=new_avatar)
-    try:
-        commands_list = await bot.tree.sync()
-        print(f'Синхронизировано команд: {len(commands_list)} - {commands_list}')
-    except Exception as e:
-        print(e)
+    #   try:
+    #       commands_list = await bot.tree.sync()
+    #       print(f'Синхронизировано команд: {len(commands_list)} - {commands_list}')
+    #   except Exception as e:
+    #       print(e)
+
+    total_yt_checks_awaits = SDI.get_total_yt_checks()
+    print(f'Всего каналов YT на обработке: {total_yt_checks_awaits}')
+
+    while True:
+        await check_live_streams()
+        await asyncio.sleep(30 * total_yt_checks_awaits)  # по 30 сек на каждый канал до полного перезапуска
 
 
 @bot.hybrid_command(name="daily", descripion="Получить ежедневный бонус")
@@ -233,7 +295,6 @@ async def cmd_daily(ctx):
 @discord.ext.commands.has_permissions(administrator=True)
 async def cmd_toggle_setting(ctx, setting):
     if setting == "leave_notifications_enabled":
-
         SDI.toggle_settings(ctx.guild.id, setting)
 
         after = f'Теперь настройка {setting} переключена в положение **{SDI.get_settings(ctx.guild.id, setting)}**'
@@ -333,5 +394,103 @@ async def on_member_remove(user_gone):
     print('Done')
 
 
+@bot.hybrid_command(name=CommandsNames.CHECK_STREAM,
+                    description="Проверить стримы на онлайн")
+@commands.cooldown(1, 3, BucketType.user)
+@discord.ext.commands.guild_only()
+@discord.ext.commands.has_permissions(administrator=True)
+async def cmd_toggle_setting(ctx):
+    await check_live_streams()
+    pass
+
+
+async def check_live_streams():
+    for server_id in SDI.data:
+        stream_settings = SDI.get_settings(server_id, "notify", "options", "stream_starts")
+        # print(f'Для сервера {ServerID} настройка равна: {stream_settings}')
+        if stream_settings == "True":
+            notify_stream_channels = SDI.get_settings(server_id, "streams", "streaming_channels")
+            if len(notify_stream_channels) > 0:
+                print(f'Список каналов на проверку для сервера {server_id}: {notify_stream_channels}')
+                post_to_channel = SDI.get_settings(server_id, "streams", "options", "post_chid")
+                await run_check_for_list(notify_stream_channels, post_to_channel)
+            else:
+                print(
+                    f'Список каналов для проверки стримов на сервере {server_id} пуст, хотя функция проверки включена')
+
+
+async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None, twitch_type=None):
+    for channel_url in url_list_of_channels:
+        print(f'Строка из цикла на проверку: {channel_url}')
+        if "youtube" not in channel_url: continue
+        try:
+            stream_url = channel_url + "/streams"  # overlay-style="LIVE"
+            print(f'Проверяю канал: {stream_url}')
+            response = requests.get(stream_url, headers=headers)
+            soup = BeautifulSoup(response.content, 'html.parser')
+
+            script_tag = soup.select_one('script:-soup-contains("ytInitialData")')
+            script_content = script_tag.string
+            json_start = script_content.find('{')
+            json_end = script_content.rfind('}') + 1
+            json_data = script_content[json_start:json_end]
+            ytInitialData = json.loads(json_data)
+
+            with open("html_file.txt", 'w', encoding='utf-8') as file:
+                file.write(json.dumps(ytInitialData, indent=4))
+
+            # 0 - Главная
+            # 1 - Видео
+            # 2 - Shorts
+            # 3 - Трансляции
+            # 4 - Плейлисты
+            basic_tag_path = (ytInitialData["contents"]["twoColumnBrowseResultsRenderer"]["tabs"][3]["tabRenderer"]
+            ["content"]["richGridRenderer"]["contents"][0]["richItemRenderer"]["content"]["videoRenderer"])
+            current_stream_status = (basic_tag_path["thumbnailOverlays"][0]["thumbnailOverlayTimeStatusRenderer"]
+            ["text"]["runs"][0]["text"])
+            if len(str(current_stream_status)) >= 1:
+                if SDI.check_yt_cache(post_to_channel, basic_tag_path["videoId"]) == True:
+                    print("Такое видео уже постили раньше на том же сервере")
+                    return
+                print("Обнаружен активный стрим!")
+                stream_url = f'https://www.youtube.com/watch?v={basic_tag_path["videoId"]}'
+
+                # кэширование ютуб-канала, который уже получил оповещение о своём стриме
+                SDI.update_yt_cache(post_to_channel, basic_tag_path["videoId"])
+
+                # print(f'Полный путь до стрима: {stream_url}')
+                discord_channel = bot.get_channel(int(post_to_channel))
+                channel_name = ytInitialData["metadata"]["channelMetadataRenderer"]["title"]
+                stream_title = basic_tag_path["title"]["runs"][0]["text"]
+                thumbnail = basic_tag_path["thumbnail"]["thumbnails"][3]["url"]
+                thumbnail_url = thumbnail[0: thumbnail.find("?")]
+                avatar_url = (
+                    ytInitialData["metadata"]["channelMetadataRenderer"]["avatar"]["thumbnails"][0]["url"])
+                # print(avatar_url)
+
+                embed = discord.Embed(
+                    title=f"{channel_name} начинает трансляцию!",
+                    description=f'**{stream_title}**',
+                    url=stream_url,
+                    color=Colour.from_rgb(*get_average_color(avatar_url))
+                )
+                embed.set_thumbnail(url=avatar_url)
+                embed.set_image(url=thumbnail_url)
+                embed.set_author(name=channel_name, icon_url=avatar_url)
+                embed.set_footer(text="Mister RIC approves!")
+                await discord_channel.send(embed=embed)
+
+        except Exception as e:
+            if 'runs' in str(e):  # если ошибка содержит не найденный аргумент - значит его нет, как и трансляции
+                print(f'На канале "{channel_url}" нет активных трансляций')
+            else:
+                print(f'Ошибка при проверке канала: {e}')
+        print('Ожидаю тайм-аут.')
+        await asyncio.sleep(30)
+
+
 if __name__ == '__main__':
     bot.run(DISCORD_TOKEN)
+
+# TODO
+# изменить везде обработку "leave_notifications_enabled" на новую структуру данных

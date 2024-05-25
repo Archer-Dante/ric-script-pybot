@@ -2,5 +2,7 @@
 	"current_locale": "ru",
 	"server_data_path": ".data",
 	"templates_subpath": "_templates",
-	"localization_path": "locale"
+	"localization_path": "locale",
+	"youtube_fetch_cooldown": "20",
+	"twitch_fetch_cooldown": "20"
 }

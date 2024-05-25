@@ -4,6 +4,7 @@ from modules.message_manager import get_phrase  # импорт своей фун
 class CommandsNames:
     BOTS_KICKED = "bots-kicked"
     TOGGLE = "toggle"
+    CHECK_STREAM = "stream-check"
 
 
 class Bcolors:

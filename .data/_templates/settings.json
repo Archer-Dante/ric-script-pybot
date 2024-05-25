@@ -1,4 +1,6 @@
 {
+        "prefix": "!!",
+        "premium": "date-till-on",
         "autokick": [
                 "1",
                 {
@@ -12,6 +14,22 @@
                         ]
                 }
         ],
-        "prefix": "!!",
-        "leave_notifications_enabled": false
+        "leave_notifications_enabled": "False",
+        "notify": {
+                "options": {
+                        "member_quits": "False",
+                        "stream_starts": "False",
+                        "video_published": "False"
+                }
+        },
+        "streams": {
+                "options": {
+                        "post_chid": "0",
+                        "yt_parse_method": "0",
+                        "tw_parse_method": "0"
+                },
+                "streaming_channels": [
+                ]
+        }
+
 }

@@ -113,6 +113,40 @@ class ServerDataInterface:
         cls.save_cfgs(s_id)
 
     @classmethod
+    def manage_list(cls, s_id, action, value_to_act_with, *args):
+        """ Управление списками внутри указанного пути
+        :param s_id: ID сервера
+        :param what_to_do: add || remove
+        ;param *args: путь до ключа-значения, где значение - список
+        :return:
+        """
+        reply: str = ""
+        cfg_branch = cls.data[str(s_id)]["settings"]
+        for subbranch in args:
+            if subbranch != args[-1]:
+                cfg_branch = cfg_branch[subbranch]
+
+        temp_list: list = cfg_branch[args[-1]]
+        if action == "add":
+            if not value_to_act_with in temp_list:
+                temp_list.append(value_to_act_with)
+                reply = "Канал успешно добавлен!"
+            else:
+                reply = "Такой канал уже есть в списке этого сервера"
+        if action == "remove":
+            if value_to_act_with in temp_list:
+                temp_list.remove(value_to_act_with)
+                reply = "Канал успешно удалён!"
+            else:
+                reply = f"Такого канала не было. Вы что-то путаете?\n\n Вот добавленные каналы на сервере:"
+                for x in temp_list:
+                    reply = reply + f"\n{x}"
+
+        cls.save_cfgs(s_id)
+        return reply
+
+
+    @classmethod
     def save_cfgs(cls, s_id):
         # print(str(s_id))
         # print(cls.data)
@@ -147,7 +181,7 @@ class ServerDataInterface:
         else:
             cfg_branch[args[-1]] = "True"
         print(f'Стало: {cfg_branch[args[-1]]}, сервер {s_id}')
-        # print(json.dumps(cls.data[str(s_id)]["settings"], indent=8))
+        print(json.dumps(cls.data[str(s_id)]["settings"], indent=8))
         cls.save_cfgs(s_id)
         pass
 
@@ -175,7 +209,7 @@ class ServerDataInterface:
             if cls.data[server]["settings"]["notify"]["options"]["stream_starts"] == "True":
                 for link in cls.data[server]["settings"]["streams"]["streaming_channels"]:
                     if "youtube" in link:
-                        print(f'Youtube канал {link} добавлен в отслеживание для сервера {server}')
+                        # print(f'Youtube канал {link} добавлен в отслеживание для сервера {server}')
                         value = value + 1
         return int(value)
 
@@ -245,6 +279,8 @@ async def on_ready():
         FileAction.server_files_check(guild.id)
         ServerDataInterface(guild.id)
 
+        # SDI.manage_list(guild.id,1,2, "streams", "streaming_channels")
+
     print("Бот находится в " + str(guild_count) + " гильдиях.\n")
 
     # т.к. нельзя получить сообщение без канала, а канал или сообщение без события, то зная ID канала
@@ -278,6 +314,7 @@ async def on_ready():
     # with open("cat.gif", "rb") as f:
     #     new_avatar = f.read()
     # await bot.user.edit(avatar=new_avatar)
+
     try:
         commands_list = await bot.tree.sync()
         print(f'Синхронизировано команд: {len(commands_list)} - {commands_list}')
@@ -357,6 +394,24 @@ async def cmd_manage_streams(ctx, ch_id: str):
         await hybrid_cmd_router(ctx, f'Теперь сообщения от стримов будут публиковаться здесь: <#{reply}>')
     except Exception:
         await hybrid_cmd_router(ctx, "ID канала должен быть числом")
+
+
+@bot.hybrid_command(name=CommandsNames.ADD_STREAM_URL,
+                    description="Добавить канал, который будет проверяться на наличие стримов")
+@discord.ext.commands.guild_only()
+@discord.ext.commands.has_permissions(administrator=True)
+async def cmd_manage_streams(ctx, channel_url: str):
+    reply = SDI.manage_list(ctx.guild.id, "add", channel_url, "streams", "streaming_channels")
+    await hybrid_cmd_router(ctx, reply)
+
+
+@bot.hybrid_command(name=CommandsNames.REMOVE_STREAM_URL,
+                    description="Добавить канал, который будет проверяться на наличие стримов")
+@discord.ext.commands.guild_only()
+@discord.ext.commands.has_permissions(administrator=True)
+async def cmd_manage_streams(ctx, channel_url: str):
+    reply = SDI.manage_list(ctx.guild.id, "remove", channel_url, "streams", "streaming_channels")
+    await hybrid_cmd_router(ctx, reply)
 
 
 @bot.event
@@ -519,7 +574,7 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
                     print(f'Такой стрим {basic_tag_path["videoId"]} уже постили на канале: {post_to_channel}')
 
         except Exception as e:
-            if 'runs' in str(e):  # если ошибка содержит не найденный аргумент - значит его нет, как и трансляции
+            if 'runs' in str(e) or 'content' in str(e):  # если ошибка содержит не найденный аргумент - значит его нет, как и трансляции
                 print(f'Нет активных трансляций')
             else:
                 print(f'Ошибка при проверке канала: {e}')

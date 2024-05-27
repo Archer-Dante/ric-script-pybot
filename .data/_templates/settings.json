@@ -1,19 +1,26 @@
 {
         "prefix": "!!",
-        "premium": "date-till-on",
-        "autokick": [
-                "1",
-                {
-                        "channel_id1": [
-                                "message_id1",
-                                "react_code1"
+        "premium": {
+                "voucher": "code_of_voucher",
+                "till_date": "1999-99-99"
+        },
+        "autokick": {
+                "options": {
+                        "active": "True",
+                        "ban_instead": "False",
+                        "channel_to_farewall": 0
+                },
+                "trap_channels": {
+                        "925204884054229033": [
+                                "1072806217824600074",
+                                "<a:z_bye:1229599440352968725>"
                         ],
                         "channel_id2": [
-                                "message_id2",
-                                "react_code2"
+                                "message_id",
+                                "react_role"
                         ]
                 }
-        ],
+        },
         "leave_notifications_enabled": "False",
         "notify": {
                 "options": {
@@ -22,14 +29,14 @@
                         "video_published": "False"
                 }
         },
+        "stream_starts": "True",
         "streams": {
                 "options": {
-                        "post_chid": "0",
-                        "yt_parse_method": "0",
-                        "tw_parse_method": "0"
+                        "post_chid": 0,
+                        "yt_parse_method": "1",
+                        "tw_parse_method": "1"
                 },
                 "streaming_channels": [
                 ]
         }
-
 }

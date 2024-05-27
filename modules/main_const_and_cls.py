@@ -5,8 +5,8 @@ class CommandsNames:
     BOTS_KICKED = "bots-kicked"
     TOGGLE = "toggle"
     CHANGE_POST_CHID = "stream-post-to-channel"
-    ADD_STREAM_URL = "stream-add-channel-link"
-    REMOVE_STREAM_URL = "stream-remove-channel-link"
+    ADD_STREAM_URL = "stream-add-channel"
+    REMOVE_STREAM_URL = "stream-remove-channel"
 
 
 class SettingsName:

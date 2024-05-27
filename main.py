@@ -161,9 +161,11 @@ class ServerDataInterface:
     def get_total_yt_checks(cls):
         value = 0
         for server in cls.data:
-            for link in cls.data[server]["settings"]["streams"]["streaming_channels"]:
-                if "youtube" in link:
-                    value = value + 1
+            if cls.data[server]["settings"]["notify"]["options"]["stream_starts"] == "True":
+                for link in cls.data[server]["settings"]["streams"]["streaming_channels"]:
+                    if "youtube" in link:
+                        print(f'Youtube канал {link} добавлен в отслеживание для сервера {server}')
+                        value = value + 1
         return int(value)
 
     @classmethod
@@ -176,7 +178,7 @@ class ServerDataInterface:
         """
         # cls.yt_cache.append(video)
         cls.yt_cache[ch_id].append(video)
-        print(cls.yt_cache)
+        # print(cls.yt_cache)
 
 
     @classmethod
@@ -191,7 +193,7 @@ class ServerDataInterface:
         cached = False
         for x in cls.yt_cache[ch_id]:
             if x == video:
-                print(f'Уже кешировано: {x}')
+                # print(f'Уже кешировано: {x}')
                 cached = True
         return cached
 
@@ -262,18 +264,20 @@ async def on_ready():
     # with open("cat.gif", "rb") as f:
     #     new_avatar = f.read()
     # await bot.user.edit(avatar=new_avatar)
-    #   try:
-    #       commands_list = await bot.tree.sync()
-    #       print(f'Синхронизировано команд: {len(commands_list)} - {commands_list}')
-    #   except Exception as e:
-    #       print(e)
+    try:
+        commands_list = await bot.tree.sync()
+        print(f'Синхронизировано команд: {len(commands_list)} - {commands_list}')
+    except Exception as e:
+        print(e)
 
     total_yt_checks_awaits = SDI.get_total_yt_checks()
     print(f'Всего каналов YT на обработке: {total_yt_checks_awaits}')
 
     while True:
         await check_live_streams()
-        await asyncio.sleep(30 * total_yt_checks_awaits)  # по 30 сек на каждый канал до полного перезапуска
+        print(f'Ожидание глобального кулдауна {(int(config["global_stream_check_cd"]) * total_yt_checks_awaits)} с.')
+        await asyncio.sleep(int(config["global_stream_check_cd"]) * total_yt_checks_awaits)
+        print("=========== Запускаю следующий цикл проверок стримов ==================")
 
 
 @bot.hybrid_command(name="daily", descripion="Получить ежедневный бонус")
@@ -308,7 +312,7 @@ async def cmd_toggle_setting(ctx, setting):
 @commands.cooldown(1, 10, BucketType.user)
 @discord.ext.commands.guild_only()
 async def cmd_bots_kicked(ctx):
-    reply = f'`Всего ботов наказано: {ServerDataInterface.get_stats(ctx.guild.id, 'autokick_count')}`'
+    reply = f'`Всего ботов наказано: {SDI.get_stats(ctx.guild.id, 'autokick_count')}`'
     await hybrid_cmd_router(ctx, reply)
 
 
@@ -409,23 +413,23 @@ async def check_live_streams():
         stream_settings = SDI.get_settings(server_id, "notify", "options", "stream_starts")
         # print(f'Для сервера {ServerID} настройка равна: {stream_settings}')
         if stream_settings == "True":
-            notify_stream_channels = SDI.get_settings(server_id, "streams", "streaming_channels")
-            if len(notify_stream_channels) > 0:
-                print(f'Список каналов на проверку для сервера {server_id}: {notify_stream_channels}')
+            url_list_of_channels = SDI.get_settings(server_id, "streams", "streaming_channels")
+            if len(url_list_of_channels) > 0:
+                # print(f'Список каналов на проверку для сервера {server_id}: {notify_stream_channels}')
                 post_to_channel = SDI.get_settings(server_id, "streams", "options", "post_chid")
-                await run_check_for_list(notify_stream_channels, post_to_channel)
+                await run_check_for_list(url_list_of_channels, post_to_channel)
             else:
-                print(
-                    f'Список каналов для проверки стримов на сервере {server_id} пуст, хотя функция проверки включена')
+                # print(f'Список каналов для проверки стримов на сервере {server_id} пуст, хотя функция проверки включена')
+                pass
 
 
 async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None, twitch_type=None):
     for channel_url in url_list_of_channels:
-        print(f'Строка из цикла на проверку: {channel_url}')
         if "youtube" not in channel_url: continue
+        print(f'Канал на проверку: {channel_url}')
         try:
             stream_url = channel_url + "/streams"  # overlay-style="LIVE"
-            print(f'Проверяю канал: {stream_url}')
+            # print(f'Проверяю онлайн на канале: {stream_url}')
             response = requests.get(stream_url, headers=headers)
             soup = BeautifulSoup(response.content, 'html.parser')
 
@@ -436,8 +440,8 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
             json_data = script_content[json_start:json_end]
             ytInitialData = json.loads(json_data)
 
-            with open("html_file.txt", 'w', encoding='utf-8') as file:
-                file.write(json.dumps(ytInitialData, indent=4))
+            #with open("html_file.txt", 'w', encoding='utf-8') as file:
+            #    file.write(json.dumps(ytInitialData, indent=4))
 
             # 0 - Главная
             # 1 - Видео
@@ -448,45 +452,46 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
             ["content"]["richGridRenderer"]["contents"][0]["richItemRenderer"]["content"]["videoRenderer"])
             current_stream_status = (basic_tag_path["thumbnailOverlays"][0]["thumbnailOverlayTimeStatusRenderer"]
             ["text"]["runs"][0]["text"])
+
             if len(str(current_stream_status)) >= 1:
-                if SDI.check_yt_cache(post_to_channel, basic_tag_path["videoId"]) == True:
-                    print("Такое видео уже постили раньше на том же сервере")
-                    return
-                print("Обнаружен активный стрим!")
-                stream_url = f'https://www.youtube.com/watch?v={basic_tag_path["videoId"]}'
+                if SDI.check_yt_cache(post_to_channel, basic_tag_path["videoId"]) != True:
+                    print("Обнаружен активный стрим!")
+                    stream_url = f'https://www.youtube.com/watch?v={basic_tag_path["videoId"]}'
 
-                # кэширование ютуб-канала, который уже получил оповещение о своём стриме
-                SDI.update_yt_cache(post_to_channel, basic_tag_path["videoId"])
+                    # кэширование ютуб-канала, который уже получил оповещение о своём стриме
+                    SDI.update_yt_cache(post_to_channel, basic_tag_path["videoId"])
 
-                # print(f'Полный путь до стрима: {stream_url}')
-                discord_channel = bot.get_channel(int(post_to_channel))
-                channel_name = ytInitialData["metadata"]["channelMetadataRenderer"]["title"]
-                stream_title = basic_tag_path["title"]["runs"][0]["text"]
-                thumbnail = basic_tag_path["thumbnail"]["thumbnails"][3]["url"]
-                thumbnail_url = thumbnail[0: thumbnail.find("?")]
-                avatar_url = (
-                    ytInitialData["metadata"]["channelMetadataRenderer"]["avatar"]["thumbnails"][0]["url"])
-                # print(avatar_url)
+                    # print(f'Полный путь до стрима: {stream_url}')
+                    discord_channel = bot.get_channel(int(post_to_channel))
+                    channel_name = ytInitialData["metadata"]["channelMetadataRenderer"]["title"]
+                    stream_title = basic_tag_path["title"]["runs"][0]["text"]
+                    thumbnail = basic_tag_path["thumbnail"]["thumbnails"][3]["url"]
+                    thumbnail_url = thumbnail[0: thumbnail.find("?")]
+                    avatar_url = (
+                        ytInitialData["metadata"]["channelMetadataRenderer"]["avatar"]["thumbnails"][0]["url"])
+                    # print(avatar_url)
 
-                embed = discord.Embed(
-                    title=f"{channel_name} начинает трансляцию!",
-                    description=f'**{stream_title}**',
-                    url=stream_url,
-                    color=Colour.from_rgb(*get_average_color(avatar_url))
-                )
-                embed.set_thumbnail(url=avatar_url)
-                embed.set_image(url=thumbnail_url)
-                embed.set_author(name=channel_name, icon_url=avatar_url)
-                embed.set_footer(text="Mister RIC approves!")
-                await discord_channel.send(embed=embed)
+                    embed = discord.Embed(
+                        title=f"{channel_name} начинает трансляцию!",
+                        description=f'**{stream_title}**',
+                        url=stream_url,
+                        color=Colour.from_rgb(*get_average_color(avatar_url))
+                    )
+                    embed.set_thumbnail(url=avatar_url)
+                    embed.set_image(url=thumbnail_url)
+                    embed.set_author(name=channel_name, icon_url=avatar_url)
+                    embed.set_footer(text="Mister RIC approves!")
+                    await discord_channel.send(embed=embed)
+                else:
+                    print(f'Такой стрим {basic_tag_path["videoId"]} уже постили на канале: {post_to_channel}')
 
         except Exception as e:
             if 'runs' in str(e):  # если ошибка содержит не найденный аргумент - значит его нет, как и трансляции
-                print(f'На канале "{channel_url}" нет активных трансляций')
+                print(f'Нет активных трансляций')
             else:
                 print(f'Ошибка при проверке канала: {e}')
-        print('Ожидаю тайм-аут.')
-        await asyncio.sleep(30)
+        print(f'Ожидаю тайм-аут: {int(config["global_stream_check_cd"])} с.')
+        await asyncio.sleep( int(config["global_stream_check_cd"]) )
 
 
 if __name__ == '__main__':

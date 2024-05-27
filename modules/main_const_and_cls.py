@@ -4,7 +4,13 @@ from modules.message_manager import get_phrase  # импорт своей фун
 class CommandsNames:
     BOTS_KICKED = "bots-kicked"
     TOGGLE = "toggle"
-    CHECK_STREAM = "stream-check"
+    CHANGE_POST_CHID = "stream-post-to-channel"
+    ADD_STREAM_URL = "stream-add-channel-link"
+    REMOVE_STREAM_URL = "stream-remove-channel-link"
+
+
+class SettingsName:
+    pass
 
 
 class Bcolors:

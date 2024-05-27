@@ -101,6 +101,19 @@ class ServerDataInterface:
         return cfg_branch
 
     @classmethod
+    def set_settings(cls, s_id, changing_value, *args):
+        cfg_branch = cls.data[str(s_id)]["settings"]
+        for subbranch in args:
+            if subbranch == args[-1]: # последний элемент
+                cfg_branch[subbranch] = changing_value
+                # print(cfg_branch[subbranch])
+            else: # просто расширяем путь дальше и вглубь вложений
+                cfg_branch = cfg_branch[subbranch]
+                # print(cfg_branch)
+        cls.save_cfgs(s_id)
+
+
+    @classmethod
     def save_cfgs(cls, s_id):
         # print(str(s_id))
         # print(cls.data)
@@ -116,35 +129,35 @@ class ServerDataInterface:
         pass
 
     @classmethod
-    def toggle_settings(cls, s_id, setting_name):
-        print("Переключаю...")  # leave_notifications_enabled
-        value = cls.data[str(s_id)]["settings"]
-        print(f'Было: {value[setting_name]}, сервер {s_id}')
-        if value[setting_name] == "True":
-            value[setting_name] = "False"
+    def toggle_settings(cls, s_id, *args):
+        """
+        Переключает значение по указанному в *args пути в противоположное значение
+        :param s_id: ID сервера
+        :param args: аргументы, где каждый аргумент - вложение внутри настроек
+        """
+        cfg_branch = cls.data[str(s_id)]["settings"]
+        for subbranch in args:
+            if subbranch == args[-1]: # последний элемент
+                pass
+            else: # просто расширяем путь дальше и вглубь вложений
+                cfg_branch = cfg_branch[subbranch]
+
+        print(f'Было: {cfg_branch[args[-1]]}, сервер {s_id}')
+        if cfg_branch[args[-1]] == "True":
+            cfg_branch[args[-1]] = "False"
         else:
-            value[setting_name] = "True"
-        print(f'Стало: {value[setting_name]}, сервер {s_id}')
-        print(json.dumps(cls.data[str(s_id)]["settings"], indent=8))
+            cfg_branch[args[-1]] = "True"
+        print(f'Стало: {cfg_branch[args[-1]]}, сервер {s_id}')
+        # print(json.dumps(cls.data[str(s_id)]["settings"], indent=8))
         cls.save_cfgs(s_id)
         pass
+
 
     # возможно следует сделать из этого "def toggle_dict", т.к. одним автокиком не обойтись, а структура данных
     # может использоваться для разных опций
     # либо нужен полный обработчик, который будет определять, если ли в паре КЛЮЧ-ЗНАЧЕНИЕ что-то глубже и сложнее
     # чем просто значение, а именно: словарь, список или кортеж.
     # если ничего из этого нет - простая обработка, если есть - сложнее.
-    @classmethod
-    def autokick_toggle(cls, s_id):
-        value = cls.data[str(s_id)]["settings"]["autokick"]
-        print(f'Было: {value[0]}, сервер {s_id}')
-        if int(value[0]) == 1:
-            value[0] = "0"
-        else:
-            value[0] = "1"
-        print(f'Было: {value[0]}, сервер {s_id}')
-        cls.save_cfgs(s_id)
-        pass
 
     @classmethod
     def autokick_increase(cls, s_id):
@@ -180,7 +193,6 @@ class ServerDataInterface:
         cls.yt_cache[ch_id].append(video)
         # print(cls.yt_cache)
 
-
     @classmethod
     def check_yt_cache(cls, ch_id, video):
         """
@@ -202,10 +214,14 @@ SDI = ServerDataInterface  # сокращённый вариант
 
 
 async def hybrid_cmd_router(ctx_or_msg, reply):
+    embed = discord.Embed(
+        description=reply,
+        color=0xAC0000
+    )
     if type(ctx_or_msg) is discord.ext.commands.context.Context:
-        await ctx_or_msg.send(reply)
+        await ctx_or_msg.send(embed=embed)
     elif type(ctx_or_msg) is discord.message.Message:
-        await ctx_or_msg.channel.send(reply)
+        await ctx_or_msg.channel.send(embed=embed)
 
 
 # sys.exit()
@@ -298,12 +314,23 @@ async def cmd_daily(ctx):
 @discord.ext.commands.guild_only()
 @discord.ext.commands.has_permissions(administrator=True)
 async def cmd_toggle_setting(ctx, setting):
-    if setting == "leave_notifications_enabled":
-        SDI.toggle_settings(ctx.guild.id, setting)
-
-        after = f'Теперь настройка {setting} переключена в положение **{SDI.get_settings(ctx.guild.id, setting)}**'
-        await hybrid_cmd_router(ctx, after)
+    """
+    Переключить параметр в противоположное значение
+    :param setting: notify-leave - вкл\выкл оповещения о выходах с сервера
+    :param setting: notify-stream - вкл\выкл оповещения стримов
+    :return:
+    """
+    if setting == "notify-leave":
+        SDI.toggle_settings(ctx.guild.id, "notify", "options", "member_quits")
+        reply = f'Теперь настройка {setting} переключена в положение **{SDI.get_settings(ctx.guild.id, "notify", "options", "member_quits")}**'
+        await hybrid_cmd_router(ctx, reply)
+    elif setting == "notify-stream":
+        SDI.toggle_settings(ctx.guild.id, "notify", "options", "stream_starts")
+        reply = f'Теперь настройка {setting} переключена в положение **{SDI.get_settings(ctx.guild.id, "notify", "options", "stream_starts")}**'
+        await hybrid_cmd_router(ctx, reply)
         pass
+    else:
+        await hybrid_cmd_router(ctx, "Такого параметра не существует")
     pass
 
 
@@ -312,8 +339,24 @@ async def cmd_toggle_setting(ctx, setting):
 @commands.cooldown(1, 10, BucketType.user)
 @discord.ext.commands.guild_only()
 async def cmd_bots_kicked(ctx):
-    reply = f'`Всего ботов наказано: {SDI.get_stats(ctx.guild.id, 'autokick_count')}`'
+    reply = f'Всего ботов наказано: {SDI.get_stats(ctx.guild.id, 'autokick_count')}'
     await hybrid_cmd_router(ctx, reply)
+
+
+@bot.hybrid_command(name=CommandsNames.CHANGE_POST_CHID,
+                    description="Указать место куда будет поститься стрим")
+@discord.ext.commands.guild_only()
+@discord.ext.commands.has_permissions(administrator=True)
+async def cmd_manage_streams(ctx, ch_id: str):
+    try:
+        ch_id: int = int(ch_id)
+        SDI.set_settings(ctx.guild.id, ch_id, "streams", "options", "post_chid")
+        reply = SDI.get_settings(ctx.guild.id, "streams", "options", "post_chid")
+        await hybrid_cmd_router(ctx, f'Теперь сообщения от стримов будут публиковаться здесь: <#{reply}>')
+    except Exception:
+        await hybrid_cmd_router(ctx, "ID канала должен быть числом")
+
+
 
 
 @bot.event
@@ -387,7 +430,7 @@ async def on_member_remove(user_gone):
         return
     print('Нет, он вышел сам или был кикнут вручную.')
 
-    if SDI.get_settings(user_gone.guild.id, "leave_notifications_enabled") != "True":
+    if SDI.get_settings(user_gone.guild.id, "notify", "options", "member_quits") != "True":
         print('Сообщения о выходах отключены')
         return
 
@@ -396,16 +439,6 @@ async def on_member_remove(user_gone):
     # и возвращает форматированный и готовый к отправке вариант
     await channel_obj_farewall.send(f'{FarewallManager.get_formated_phrase(user_gone.mention)}')
     print('Done')
-
-
-@bot.hybrid_command(name=CommandsNames.CHECK_STREAM,
-                    description="Проверить стримы на онлайн")
-@commands.cooldown(1, 3, BucketType.user)
-@discord.ext.commands.guild_only()
-@discord.ext.commands.has_permissions(administrator=True)
-async def cmd_toggle_setting(ctx):
-    await check_live_streams()
-    pass
 
 
 async def check_live_streams():
@@ -497,5 +530,3 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
 if __name__ == '__main__':
     bot.run(DISCORD_TOKEN)
 
-# TODO
-# изменить везде обработку "leave_notifications_enabled" на новую структуру данных

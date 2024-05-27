@@ -104,14 +104,13 @@ class ServerDataInterface:
     def set_settings(cls, s_id, changing_value, *args):
         cfg_branch = cls.data[str(s_id)]["settings"]
         for subbranch in args:
-            if subbranch == args[-1]: # последний элемент
+            if subbranch == args[-1]:  # последний элемент
                 cfg_branch[subbranch] = changing_value
                 # print(cfg_branch[subbranch])
-            else: # просто расширяем путь дальше и вглубь вложений
+            else:  # просто расширяем путь дальше и вглубь вложений
                 cfg_branch = cfg_branch[subbranch]
                 # print(cfg_branch)
         cls.save_cfgs(s_id)
-
 
     @classmethod
     def save_cfgs(cls, s_id):
@@ -137,9 +136,9 @@ class ServerDataInterface:
         """
         cfg_branch = cls.data[str(s_id)]["settings"]
         for subbranch in args:
-            if subbranch == args[-1]: # последний элемент
+            if subbranch == args[-1]:  # последний элемент
                 pass
-            else: # просто расширяем путь дальше и вглубь вложений
+            else:  # просто расширяем путь дальше и вглубь вложений
                 cfg_branch = cfg_branch[subbranch]
 
         print(f'Было: {cfg_branch[args[-1]]}, сервер {s_id}')
@@ -151,7 +150,6 @@ class ServerDataInterface:
         # print(json.dumps(cls.data[str(s_id)]["settings"], indent=8))
         cls.save_cfgs(s_id)
         pass
-
 
     # возможно следует сделать из этого "def toggle_dict", т.к. одним автокиком не обойтись, а структура данных
     # может использоваться для разных опций
@@ -286,14 +284,18 @@ async def on_ready():
     except Exception as e:
         print(e)
 
-    total_yt_checks_awaits = SDI.get_total_yt_checks()
-    print(f'Всего каналов YT на обработке: {total_yt_checks_awaits}')
-
     while True:
-        await check_live_streams()
-        print(f'Ожидание глобального кулдауна {(int(config["global_stream_check_cd"]) * total_yt_checks_awaits)} с.')
-        await asyncio.sleep(int(config["global_stream_check_cd"]) * total_yt_checks_awaits)
-        print("=========== Запускаю следующий цикл проверок стримов ==================")
+        total_yt_checks_awaits = SDI.get_total_yt_checks()
+        print(f'Всего каналов YT на обработке: {total_yt_checks_awaits}')
+        global_cd = int(config["global_stream_check_cd"]) * total_yt_checks_awaits
+        if global_cd == 0:
+            print(f'Ни на одном сервере не включен постинг стримов. Отдыхаю.')
+            await asyncio.sleep(120)
+        else:
+            await check_live_streams()
+            print(f'Ожидание глобального кулдауна {global_cd} с.')
+            await asyncio.sleep(global_cd)
+            print("=========== Запускаю следующий цикл проверок стримов ==================")
 
 
 @bot.hybrid_command(name="daily", descripion="Получить ежедневный бонус")
@@ -355,8 +357,6 @@ async def cmd_manage_streams(ctx, ch_id: str):
         await hybrid_cmd_router(ctx, f'Теперь сообщения от стримов будут публиковаться здесь: <#{reply}>')
     except Exception:
         await hybrid_cmd_router(ctx, "ID канала должен быть числом")
-
-
 
 
 @bot.event
@@ -473,7 +473,7 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
             json_data = script_content[json_start:json_end]
             ytInitialData = json.loads(json_data)
 
-            #with open("html_file.txt", 'w', encoding='utf-8') as file:
+            # with open("html_file.txt", 'w', encoding='utf-8') as file:
             #    file.write(json.dumps(ytInitialData, indent=4))
 
             # 0 - Главная
@@ -524,9 +524,8 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
             else:
                 print(f'Ошибка при проверке канала: {e}')
         print(f'Ожидаю тайм-аут: {int(config["global_stream_check_cd"])} с.')
-        await asyncio.sleep( int(config["global_stream_check_cd"]) )
+        await asyncio.sleep(int(config["global_stream_check_cd"]))
 
 
 if __name__ == '__main__':
     bot.run(DISCORD_TOKEN)
-

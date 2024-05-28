@@ -508,22 +508,32 @@ async def on_raw_reaction_add(reaction):  # должно работать даж
         f'{Bcolors.BOLD}Автор сообщения: {Bcolors.ENDC}{message_id.author.display_name} ({message_id.author.global_name})')
 
     for x in reaction.member.roles:
-        if x.name == "Criminals":
-            print(f"Обнаружен ставящий реакции {x}!")
-            if reaction.message_id == 1072806217824600074 and reaction.emoji.id == emoji_to_work_with_id:
-                print('Пока-пока!\n')
-                guild_obj = await bot.fetch_guild(reaction.guild_id)
-                channel_obj_farewall = await bot.fetch_channel(channel_id_to_farewall)
+        required_role_id = SDI.get_settings(reaction.guild_id, "autokick", "options", "required_role_id")
+        trap_channels = SDI.get_settings(reaction.guild_id, "autokick", "trap_channels")
+        # проверяем соответствие роли
+        # если требуемая роль совпадает - продолжить, если не выставлена - тоже
+        if x.id == required_role_id or required_role_id == 0:
+            # проверяем все ключи, на случай если на одном сообщении несколько ловушек
+            for trap_setted_up in trap_channels:
+                # проверяем каждую ловушку, что это то самое ID
+                if int(trap_setted_up) == reaction.message_id:
+                    # проверяем, что у найденного сообщения эмоция соответствует той, которая стоит как ловушка
+                    if reaction.emoji.id == int(trap_channels[trap_setted_up]):
+                        channel_obj_farewall = await bot.fetch_channel(channel_id_to_farewall)
+                        if not FarewallManager.in_list(reaction.member.id):  # проверяем есть ли ИД в списке класса-менеджера
+                            FarewallManager.add_to_list(reaction.member.id)  # добавляем если отсутствует
 
-                if not FarewallManager.in_list(reaction.member.id):  # проверяем есть ли ИД в списке класса-менеджера
-                    FarewallManager.add_to_list(reaction.member.id)  # добавляем если отсутствует
+                        await channel_obj_farewall.send(
+                            f'{FarewallManager.get_formated_phrase(reaction.member.mention)}')
+                        ServerDataInterface.autokick_increase(reaction.guild_id)
+                        kicked_total = ServerDataInterface.get_stats(reaction.guild_id, "autokick_count")
+                        await channel_obj_farewall.send(f'- `подстрелено негодников: {kicked_total}`')
+                        guild_obj = await bot.fetch_guild(reaction.guild_id)
+                        await guild_obj.kick(reaction.member)
+                    else:
+                        print("Сообщение для бана было верное, но эмодзи не соответствует указанному для бана/кика")
 
-                await channel_obj_farewall.send(f'{FarewallManager.get_formated_phrase(reaction.member.mention)}')
-                ServerDataInterface.autokick_increase(reaction.guild_id)
-                kicked_total = ServerDataInterface.get_stats(reaction.guild_id, "autokick_count")
-                await channel_obj_farewall.send(f'- `подстрелено негодников: {kicked_total}`')
-                await guild_obj.kick(reaction.member)
-    print(f'\n\n')
+    print(f'\n')
 
 
 @bot.event

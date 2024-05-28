@@ -6,13 +6,14 @@
         },
         "autokick": {
                 "options": {
-                        "active": "True",
+                        "active": "False",
                         "ban_instead": "False",
+                        "required_role_id": 0,
                         "channel_to_farewall": 0
                 },
                 "trap_channels": {
-                        "925204884054229033": [
-                                "1072806217824600074",
+                        "0": [
+                                "0",
                                 "<a:z_bye:1229599440352968725>"
                         ],
                         "channel_id2": [
@@ -21,7 +22,6 @@
                         ]
                 }
         },
-        "leave_notifications_enabled": "False",
         "notify": {
                 "options": {
                         "member_quits": "False",
@@ -29,10 +29,9 @@
                         "video_published": "False"
                 }
         },
-        "stream_starts": "True",
         "streams": {
                 "options": {
-                        "post_chid": 0,
+                        "post_chid": 735409258904027166,
                         "yt_parse_method": "1",
                         "tw_parse_method": "1"
                 },

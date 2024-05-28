@@ -7,6 +7,7 @@ class CommandsNames:
     CHANGE_POST_CHID = "stream-post-to-channel"
     ADD_STREAM_URL = "stream-add-channel"
     REMOVE_STREAM_URL = "stream-remove-channel"
+    STREAM_LIST = "stream-list"
 
 
 class SettingsName:

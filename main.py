@@ -1,7 +1,9 @@
 import asyncio
+import typing
 
 import discord
 from discord import app_commands, Colour
+from discord.app_commands import Argument, Choice
 from discord.ext import commands
 import pathlib
 import os
@@ -214,7 +216,7 @@ class ServerDataInterface:
     @classmethod
     def get_total_stream_checks(cls):
         youtube_channels = 0
-        twitch_channels  = 0
+        twitch_channels = 0
         for server in cls.data:
             if cls.data[server]["settings"]["notify"]["options"]["stream_starts"] == "True":
                 for link in cls.data[server]["settings"]["streams"]["streaming_channels"]:
@@ -287,10 +289,17 @@ async def hybrid_cmd_router(ctx_or_msg, reply):
         description=reply,
         color=0xAC0000
     )
-    if type(ctx_or_msg) is discord.ext.commands.context.Context:
-        await ctx_or_msg.send(embed=embed)
-    elif type(ctx_or_msg) is discord.message.Message:
-        await ctx_or_msg.channel.send(embed=embed)
+    print(type(ctx_or_msg), ctx_or_msg)
+    print(type(reply), reply)
+    try:
+        if type(ctx_or_msg) is discord.ext.commands.context.Context:
+            await ctx_or_msg.send(embed=embed)
+        elif type(ctx_or_msg) is discord.message.Message:
+            await ctx_or_msg.channel.send(embed=embed)
+        elif type(ctx_or_msg) is discord.interactions.Interaction:
+            await ctx_or_msg.response.send_message(embed=embed)
+    except Exception as e:
+        print(f'Ошибка гибридной обёртки: {e}')
 
 
 # sys.exit()
@@ -308,6 +317,9 @@ channel_id_to_farewall = 735409258904027166  # 735409258904027166 - тестов
 
 @bot.event
 async def on_ready():
+    activity = discord.Game(name="Thinking of next RIC tournament..?")
+    await bot.change_presence(activity=activity)
+
     guild_count = 0
 
     for guild in bot.guilds:
@@ -355,6 +367,7 @@ async def on_ready():
     try:
         commands_list = await bot.tree.sync()
         print(f'Синхронизировано команд: {len(commands_list)} - {commands_list}')
+        # for x in commands_list: BotInterface.commands_list.append(x)
     except Exception as e:
         print(e)
 
@@ -373,16 +386,17 @@ async def on_ready():
             print("=========== Запускаю следующий цикл проверок стримов ==================")
 
 
+@bot.tree.command(name="help")
+@discord.ext.commands.guild_only()
+async def cmd_helpinfo(ctx):
+    reply = CommandsNames.COMMANDS
+    await hybrid_cmd_router(ctx, reply)
+
+
 @bot.hybrid_command(name="daily", descripion="Получить ежедневный бонус")
 async def cmd_daily(ctx):
     print("test")
     await ctx.send("Daily yet not implemented! Stay tuned!!")
-
-
-# @bot.tree.command(name="www")
-# async def test2(interaction: discord.Interaction):
-#     # noinspection PyUnresolvedReferences
-#     await interaction.response.send_message(f" 234 ")
 
 
 @bot.hybrid_command(name=CommandsNames.TOGGLE,
@@ -390,13 +404,7 @@ async def cmd_daily(ctx):
 @commands.cooldown(1, 4, BucketType.user)
 @discord.ext.commands.guild_only()
 @discord.ext.commands.has_permissions(administrator=True)
-async def cmd_toggle_setting(ctx, setting):
-    """
-    Переключить параметр в противоположное значение
-    :param setting: notify-leave - вкл\выкл оповещения о выходах с сервера
-    :param setting: notify-stream - вкл\выкл оповещения стримов
-    :return:
-    """
+async def cmd_toggle(ctx, setting: typing.Literal["notify-leave", "notify-stream"]):
     if setting == "notify-leave":
         SDI.toggle_settings(ctx.guild.id, "notify", "options", "member_quits")
         reply = f'Теперь настройка {setting} переключена в положение **{SDI.get_settings(ctx.guild.id, "notify", "options", "member_quits")}**'
@@ -455,10 +463,10 @@ async def cmd_manage_streams(ctx, channel_url: str):
 @bot.hybrid_command(name=CommandsNames.STREAM_LIST,
                     description="Добавить канал, который будет проверяться на наличие стримов")
 @discord.ext.commands.guild_only()
-@discord.ext.commands.has_permissions(administrator=True)
 async def cmd_manage_streams(ctx):
     reply = SDI.get_stream_channels(ctx.guild.id)
     await hybrid_cmd_router(ctx, f'Список отслеживаемых каналов: \n{reply}')
+
 
 @bot.event
 async def on_message(message):
@@ -629,7 +637,6 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
 
         elif "twitch" in channel_url:
             user_login = channel_url[channel_url.rfind("/") + 1:]
-            print(user_login)
 
             twitch = await Twitch('2fqly3pgkfd6jbd3cmxdybpyhvkekb', 'fm75x5f7i51jx0389ob1jlyoemjjzm')
             # 0 - логин \ юзернейм

@@ -2,12 +2,30 @@ from modules.message_manager import get_phrase  # импорт своей фун
 
 
 class CommandsNames:
+    HELP = "help"
     BOTS_KICKED = "bots-kicked"
     TOGGLE = "toggle"
     CHANGE_POST_CHID = "stream-post-to-channel"
     ADD_STREAM_URL = "stream-add-channel"
     REMOVE_STREAM_URL = "stream-remove-channel"
     STREAM_LIST = "stream-list"
+
+    COMMANDS = (f'**Список доступных команд:**\n'
+                f'\n'
+                f'- `/help` - получить справку по командам\n'
+                f'- `/bots-kicked` - посмотреть количество автоматически кикнутых ботов на сервере\n'
+                f'- `/toggle (leave)` - включить/выключить оповещения о выходе человека с сервера'
+                f'*(не применяется к оповещениям о автоматически кикнутых бот-аккаунтах)*\n'
+                f'\n'
+                f'- `/stream-post-to-channel (id)` - указать куда отправлять оповещения\n'
+                f'- `/stream-add-channel (url)` - добавить канал в - список отслеживаемых\n'
+                f'- `/stream-remove-channel (url)` - удалить канал из списка отслеживаемых\n'
+                f'- `/toggle notify-stream` - включить/выключить оповещения о стримах\n'
+                f'- `/stream-list` - показать весь список отслеживаемых стрим-каналов\n')
+
+
+
+
 
 
 class SettingsName:

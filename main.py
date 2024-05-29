@@ -428,44 +428,37 @@ async def cmd_bots_kicked(ctx):
     await hybrid_cmd_router(ctx, reply)
 
 
-@bot.hybrid_command(name=CommandsNames.CHANGE_POST_CHID,
-                    description="Указать место куда будет поститься стрим")
-@discord.ext.commands.guild_only()
-@discord.ext.commands.has_permissions(administrator=True)
-async def cmd_manage_streams(ctx, ch_id: str):
-    try:
-        ch_id: int = int(ch_id)
-        SDI.set_settings(ctx.guild.id, ch_id, "streams", "options", "post_chid")
-        reply = SDI.get_settings(ctx.guild.id, "streams", "options", "post_chid")
-        await hybrid_cmd_router(ctx, f'Теперь сообщения от стримов будут публиковаться здесь: <#{reply}>')
-    except Exception:
-        await hybrid_cmd_router(ctx, "ID канала должен быть числом")
-
-
-@bot.hybrid_command(name=CommandsNames.ADD_STREAM_URL,
+@bot.hybrid_command(name=CommandsNames.STREAM,
                     description="Добавить канал, который будет проверяться на наличие стримов")
 @discord.ext.commands.guild_only()
 @discord.ext.commands.has_permissions(administrator=True)
-async def cmd_manage_streams(ctx, channel_url: str):
-    reply = SDI.manage_list(ctx.guild.id, "add", channel_url, "streams", "streaming_channels")
-    await hybrid_cmd_router(ctx, reply)
-
-
-@bot.hybrid_command(name=CommandsNames.REMOVE_STREAM_URL,
-                    description="Добавить канал, который будет проверяться на наличие стримов")
-@discord.ext.commands.guild_only()
-@discord.ext.commands.has_permissions(administrator=True)
-async def cmd_manage_streams(ctx, channel_url: str):
-    reply = SDI.manage_list(ctx.guild.id, "remove", channel_url, "streams", "streaming_channels")
-    await hybrid_cmd_router(ctx, reply)
-
-
-@bot.hybrid_command(name=CommandsNames.STREAM_LIST,
-                    description="Добавить канал, который будет проверяться на наличие стримов")
-@discord.ext.commands.guild_only()
-async def cmd_manage_streams(ctx):
-    reply = SDI.get_stream_channels(ctx.guild.id)
-    await hybrid_cmd_router(ctx, f'Список отслеживаемых каналов: \n{reply}')
+async def cmd_manage_streams(ctx, command: typing.Literal["add", "remove", "channel", "list"], param: str):
+    if command == "add":
+        if param.find("youtube") < 0 and param.find("twitch") < 0:
+            await hybrid_cmd_router(ctx, "Не указан URL канала")
+            return
+        reply = SDI.manage_list(ctx.guild.id, "add", param, "streams", "streaming_channels")
+        await hybrid_cmd_router(ctx, reply)
+    elif command == "remove":
+        if param.find("youtube") < 0 and param.find("twitch") < 0:
+            await hybrid_cmd_router(ctx, "Не указан URL канала")
+            return
+        reply = SDI.manage_list(ctx.guild.id, "remove", param, "streams", "streaming_channels")
+        await hybrid_cmd_router(ctx, reply)
+    elif command == "list":
+        if param != "all":
+            await hybrid_cmd_router(ctx, "Указан неверный параметр")
+            return
+        reply = SDI.get_stream_channels(ctx.guild.id)
+        await hybrid_cmd_router(ctx, f'Список отслеживаемых каналов: \n{reply}')
+    elif command == "channel":
+        try:
+            ch_id: int = int(param)
+            SDI.set_settings(ctx.guild.id, ch_id, "streams", "options", "post_chid")
+            reply = SDI.get_settings(ctx.guild.id, "streams", "options", "post_chid")
+            await hybrid_cmd_router(ctx, f'Теперь сообщения от стримов будут публиковаться здесь: <#{reply}>')
+        except Exception:
+            await hybrid_cmd_router(ctx, "ID канала должен быть числом")
 
 
 @bot.event
@@ -520,7 +513,8 @@ async def on_raw_reaction_add(reaction):  # должно работать даж
                     # проверяем, что у найденного сообщения эмоция соответствует той, которая стоит как ловушка
                     if reaction.emoji.id == int(trap_channels[trap_setted_up]):
                         channel_obj_farewall = await bot.fetch_channel(channel_id_to_farewall)
-                        if not FarewallManager.in_list(reaction.member.id):  # проверяем есть ли ИД в списке класса-менеджера
+                        if not FarewallManager.in_list(
+                                reaction.member.id):  # проверяем есть ли ИД в списке класса-менеджера
                             FarewallManager.add_to_list(reaction.member.id)  # добавляем если отсутствует
 
                         await channel_obj_farewall.send(

@@ -14,7 +14,7 @@ from datetime import datetime
 from modules.file_manager import FileAction  # импорт своего класса по работе с файлами
 from modules.load_config import config  # импорт результата отдельной загрузки для главного конфига
 from modules.main_const_and_cls import Bcolors  # импорт кодов цветов и форматирования для консоли
-from modules.main_const_and_cls import FarewallManager  # импорт генератора сообщений
+from modules.main_const_and_cls import CachedBans  # импорт генератора сообщений
 from modules.main_const_and_cls import CommandsNames  # импорт названия команд из констант внутри класса
 from modules.tools import get_average_color  # получение усреднённого цвета RGB
 
@@ -280,6 +280,28 @@ class ServerDataInterface:
                 cached = True
         return cached
 
+    @staticmethod
+    async def get_channel_from_message_id(s_id, message_id):
+    # channel = await SDI.get_channel_from_message_id(ctx.guild.id, int(msg_id))
+    # if channel:
+    #     print(f"Сообщение найдено в канале {channel.name}")
+    # else:
+    #     print("Сообщение не найдено")
+        guild = bot.get_guild(s_id)
+        if guild:
+            for channel in guild.text_channels:
+                try:
+                    message = await channel.fetch_message(message_id)
+                    if message:
+                        return channel
+                except discord.NotFound:
+                    pass
+                except discord.Forbidden:
+                    pass
+                except discord.HTTPException:
+                    pass
+        return None
+
 
 SDI = ServerDataInterface  # сокращённый вариант
 
@@ -289,8 +311,8 @@ async def hybrid_cmd_router(ctx_or_msg, reply):
         description=reply,
         color=0xAC0000
     )
-    print(type(ctx_or_msg), ctx_or_msg)
-    print(type(reply), reply)
+    # print(type(ctx_or_msg), ctx_or_msg)
+    # print(type(reply), reply)
     try:
         if type(ctx_or_msg) is discord.ext.commands.context.Context:
             await ctx_or_msg.send(embed=embed)
@@ -298,22 +320,15 @@ async def hybrid_cmd_router(ctx_or_msg, reply):
             await ctx_or_msg.channel.send(embed=embed)
         elif type(ctx_or_msg) is discord.interactions.Interaction:
             await ctx_or_msg.response.send_message(embed=embed)
+        elif type(ctx_or_msg) is discord.channel.TextChannel:
+            await ctx_or_msg.send(embed=embed)
+        else:
+            raise Exception
     except Exception as e:
         print(f'Ошибка гибридной обёртки: {e}')
 
 
 # sys.exit()
-
-# сообщение которое нужно заблочить
-message_id_to_ban = 1072806217824600074
-# канал где это сообщение для блока
-channel_id_with_message = 925204884054229033
-# какой смайл будет прокать работу кода
-emoji_to_work_with = "<a:z_bye:1229599440352968725>"
-emoji_to_work_with_id = 1229599440352968725
-# кана куда писать прощальные сообщения
-channel_id_to_farewall = 735409258904027166  # 735409258904027166 - тестовый # 790367801532612619 - используемый
-
 
 @bot.event
 async def on_ready():
@@ -334,15 +349,16 @@ async def on_ready():
 
     # т.к. нельзя получить сообщение без канала, а канал или сообщение без события, то зная ID канала
     # получаем сначала объект канала, потом объект сообщения, а потом ставим на него смайл указав ID смайла
-    channel_obj = bot.get_channel(channel_id_with_message)
-    message_obj = await channel_obj.fetch_message(message_id_to_ban)
-    await message_obj.clear_reaction(emoji_to_work_with)
-    try:
-        await message_obj.add_reaction(emoji_to_work_with)
-    except Exception as f:
-        print("Ошибка: ", str(f))
-    finally:
-        pass
+
+    # channel_obj = bot.get_channel(channel_id_with_message)
+    # message_obj = await channel_obj.fetch_message(message_id_to_ban)
+    # await message_obj.clear_reaction(emoji_to_work_with)
+    # try:
+    #     await message_obj.add_reaction(emoji_to_work_with)
+    # except Exception as f:
+    #     print("Ошибка: ", str(f))
+    # finally:
+    #     pass
 
     # import urllib.request as web
     # current_avatar = bot.user.avatar
@@ -381,26 +397,60 @@ async def on_ready():
             await asyncio.sleep(120)
         else:
             await check_live_streams()
-            print(f'Ожидание глобального кулдауна {global_cd} с.')
+            # print(f'Ожидание глобального кулдауна {global_cd} с.')
             # await asyncio.sleep(global_cd)
-            print("=========== Запускаю следующий цикл проверок стримов ==================")
+            # print("=========== Запускаю следующий цикл проверок стримов ==================")
 
 
-@bot.tree.command(name="help")
+@bot.tree.command(name="help", description="Справка по командам")
 @discord.ext.commands.guild_only()
 async def cmd_helpinfo(ctx):
     reply = CommandsNames.COMMANDS
     await hybrid_cmd_router(ctx, reply)
 
 
-@bot.hybrid_command(name="daily", descripion="Получить ежедневный бонус")
+@bot.hybrid_command(name=CommandsNames.DAILY, description="Получить ежедневный бонус")
+@discord.ext.commands.guild_only()
 async def cmd_daily(ctx):
     print("test")
     await ctx.send("Daily yet not implemented! Stay tuned!!")
 
 
-@bot.hybrid_command(name=CommandsNames.TOGGLE,
-                    description="Переключить настройку в указанное или противоположное значение")
+@bot.hybrid_command(name=CommandsNames.AUTOKICK, description="Настроить систему автоматических киков")
+@discord.ext.commands.guild_only()
+@discord.ext.commands.has_permissions(administrator=True)
+async def cmd_autokick(ctx, action: typing.Literal["setup-trap", "remove-trap", "for-role","ban-kicked", "notify-here", "clear-all"],
+                       arg1: str = None, arg2: str = None
+                       ):
+    if action == "setup-trap":
+        if arg1 is None or arg2 is None:
+            await hybrid_cmd_router(ctx, f'Используя `{action}` нужно указывать оба аргумента: ссылку на сообщение и эмодзи!')
+        else:
+            print("Прошло")
+            all_traps: list = SDI.get_settings(ctx.guild.id, "autokick", "trap_channels")
+            msg = arg1
+            react = arg2
+            try:
+                guild_id: str = msg.split("/")[4]
+                channel_id: str = msg.split("/")[5]
+                msg_id: str = msg.split("/")[6]
+                react_id: str = (react.split(":")[2])[0:-1]
+
+                if guild_id != str(ctx.guild.id):
+                    raise ValueError(f"Нельзя ставить ловушки на другом сервере! Фу таким быть!")
+
+                #for trap_data in all_traps:
+                #   print(f'ID канала: {trap_data[0]}\nID сообщения: {trap_data[1]}\nID эмодзи: {trap_data[2]}\n')
+                new_data = [channel_id, msg_id, react_id]
+                all_traps.append(new_data)
+                SDI.set_settings(ctx.guild.id, all_traps, "autokick", "trap_channels")
+
+            except ValueError as e:
+                await hybrid_cmd_router(ctx, str(e))
+
+
+
+@bot.hybrid_command(name=CommandsNames.TOGGLE, description="Переключить настройку в указанное или противоположное значение")
 @commands.cooldown(1, 4, BucketType.user)
 @discord.ext.commands.guild_only()
 @discord.ext.commands.has_permissions(administrator=True)
@@ -419,8 +469,7 @@ async def cmd_toggle(ctx, setting: typing.Literal["notify-leave", "notify-stream
     pass
 
 
-@bot.hybrid_command(name=CommandsNames.BOTS_KICKED,
-                    description="Показать количество автоматически кикнутых ботов")
+@bot.hybrid_command(name=CommandsNames.BOTS_KICKED, description="Показать количество автоматически кикнутых ботов")
 @commands.cooldown(1, 10, BucketType.user)
 @discord.ext.commands.guild_only()
 async def cmd_bots_kicked(ctx):
@@ -428,8 +477,7 @@ async def cmd_bots_kicked(ctx):
     await hybrid_cmd_router(ctx, reply)
 
 
-@bot.hybrid_command(name=CommandsNames.STREAM,
-                    description="Добавить канал, который будет проверяться на наличие стримов")
+@bot.hybrid_command(name=CommandsNames.STREAM, description="Управление оповещениями о стримах")
 @discord.ext.commands.guild_only()
 @discord.ext.commands.has_permissions(administrator=True)
 async def cmd_manage_streams(ctx, command: typing.Literal["add", "remove", "channel", "list"], param: str):
@@ -500,33 +548,56 @@ async def on_raw_reaction_add(reaction):  # должно работать даж
         f'{Bcolors.BOLD}Тело сообщения:{Bcolors.ENDC}\n{Bcolors.OKCYAN}{message_bdy}{Bcolors.ENDC}\n'
         f'{Bcolors.BOLD}Автор сообщения: {Bcolors.ENDC}{message_id.author.display_name} ({message_id.author.global_name})')
 
+    required_role_id: int = SDI.get_settings(reaction.guild_id, "autokick", "options", "required_role_id")
+    trap_channels: list = SDI.get_settings(reaction.guild_id, "autokick", "trap_channels")
+
     for x in reaction.member.roles:
-        required_role_id = SDI.get_settings(reaction.guild_id, "autokick", "options", "required_role_id")
-        trap_channels = SDI.get_settings(reaction.guild_id, "autokick", "trap_channels")
+
+        found_trap = False
         # проверяем соответствие роли
         # если требуемая роль совпадает - продолжить, если не выставлена - тоже
         if x.id == required_role_id or required_role_id == 0:
-            # проверяем все ключи, на случай если на одном сообщении несколько ловушек
+            # проверяем все сообщения, на случай если на одном сообщении несколько ловушек
             for trap_setted_up in trap_channels:
-                # проверяем каждую ловушку, что это то самое ID
-                if int(trap_setted_up) == reaction.message_id:
-                    # проверяем, что у найденного сообщения эмоция соответствует той, которая стоит как ловушка
-                    if reaction.emoji.id == int(trap_channels[trap_setted_up]):
-                        channel_obj_farewall = await bot.fetch_channel(channel_id_to_farewall)
-                        if not FarewallManager.in_list(
-                                reaction.member.id):  # проверяем есть ли ИД в списке класса-менеджера
-                            FarewallManager.add_to_list(reaction.member.id)  # добавляем если отсутствует
+                print(f'{trap_setted_up[1]} == {reaction.message_id}')
+                # 0 - id канала
+                # 1 - id сообщения
+                # 2 - id эмодзи
+                if int(trap_setted_up[1]) == reaction.message_id and int(trap_setted_up[2]) == reaction.emoji.id:
 
-                        await channel_obj_farewall.send(
-                            f'{FarewallManager.get_formated_phrase(reaction.member.mention)}')
-                        ServerDataInterface.autokick_increase(reaction.guild_id)
-                        kicked_total = ServerDataInterface.get_stats(reaction.guild_id, "autokick_count")
-                        await channel_obj_farewall.send(f'- `подстрелено негодников: {kicked_total}`')
-                        guild_obj = await bot.fetch_guild(reaction.guild_id)
-                        await guild_obj.kick(reaction.member)
-                    else:
-                        print("Сообщение для бана было верное, но эмодзи не соответствует указанному для бана/кика")
+                    ch_id = SDI.get_settings(reaction.guild_id,"autokick", "options", "channel_to_farewall")
+                    channel_abc_farewall = await bot.fetch_channel(int(ch_id))
 
+                    guild_abc = await bot.fetch_guild(reaction.guild_id)
+                    reason: str = SDI.get_settings(reaction.guild_id, "autokick", "options", "kick_ban_reason")
+                    kicked_total = ServerDataInterface.get_stats(reaction.guild_id, "autokick_count")
+
+                    if not CachedBans.in_list(reaction.member.id): # проверяем есть ли ИД в списке класса-менеджера
+                        CachedBans.add_to_list(reaction.member.id) # добавляем если отсутствует
+
+                    SDI.autokick_increase(reaction.guild_id)
+                    if ch_id != 0:
+                        await channel_abc_farewall.send(f'{CachedBans.get_formated_phrase(reaction.member.mention)}')
+                        await hybrid_cmd_router(channel_abc_farewall, f'- подстрелено негодников: {kicked_total}')
+
+                    try:
+                        if SDI.get_settings(reaction.guild_id, "autokick", "options", "ban_instead") != "True":
+                            await guild_abc.kick(reaction.member, reason=reason)
+                        else:
+                            await guild_abc.ban(reaction.member, reason=reason)
+                    except Exception as e:
+                        print(f'Ошибка воздействия на бот-аккаунт: {e}')
+
+                    channel_abc_reacted = await bot.fetch_channel(reaction.channel_id)
+                    message_abc = await channel_abc_reacted.fetch_message(reaction.message_id)
+                    # удаляем поставленную реакцию
+                    await message_abc.remove_reaction(reaction.emoji, reaction.member)
+
+                    found_trap = True
+                    break
+
+        if found_trap == True:
+            break
     print(f'\n')
 
 
@@ -535,11 +606,11 @@ async def on_member_remove(user_gone):
     # если в списке - убрать из списка и отменить дальнейшую процедуру
     # отмена нужна чтобы при повторном заходе выходе в пределах одной сессии бота он не помнил предыдущий случай
     print('Пользователь покинул сервер. Был ли обработан в другом событии: ')
-    if FarewallManager.in_list(user_gone.id):
-        print(f'Список ID до: {FarewallManager.userid_list}')
-        FarewallManager.remove_from_list(user_gone.id)
+    if CachedBans.in_list(user_gone.id):
+        print(f'Список ID до: {CachedBans.userid_list}')
+        CachedBans.remove_from_list(user_gone.id)
         print(f'Да, под ID {user_gone.id} его кикнул РИК-Бот. Теперь пользователь удалён из списка.')
-        print(f'Список ID после: {FarewallManager.userid_list}')
+        print(f'Список ID после: {CachedBans.userid_list}')
         return
     print('Нет, он вышел сам или был кикнут вручную.')
 
@@ -547,10 +618,12 @@ async def on_member_remove(user_gone):
         print('Сообщения о выходах отключены')
         return
 
-    channel_obj_farewall = await bot.fetch_channel(channel_id_to_farewall)  # получение канала куда постить
+    channel_id = SDI.get_settings(user_gone.guild.id, "autokick", "options", "channel_to_farewall")
+    channel_abc = await bot.fetch_channel(channel_id)  # получение канала куда постить
+
     # отправка сообщения, делая запрос в класс, который в свою очередь запрашивает рандом из другой функции
     # и возвращает форматированный и готовый к отправке вариант
-    await channel_obj_farewall.send(f'{FarewallManager.get_formated_phrase(user_gone.mention)}')
+    await channel_abc.send(f'{CachedBans.get_formated_phrase(user_gone.mention)}')
     print('Done')
 
 
@@ -571,7 +644,7 @@ async def check_live_streams():
 
 async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None, twitch_type=None):
     for channel_url in url_list_of_channels:
-        print(f'Канал на проверку: {channel_url}')
+        # print(f'Канал на проверку: {channel_url}')
 
         if "youtube" in channel_url:
             try:
@@ -633,9 +706,10 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
                         print(f'Такой стрим {basic_tag_path["videoId"]} уже постили на канале: {post_to_channel}')
 
             except Exception as e:
-                if 'runs' in str(e) or 'content' in str(
-                        e):  # если ошибка содержит не найденный аргумент - значит его нет, как и трансляции
-                    print(f'Нет активных трансляций')
+                if 'runs' in str(e) or 'content' in str(e):
+                    # если ошибка содержит не найденный аргумент - значит его нет, как и трансляции
+                    # print(f'Нет активных трансляций')
+                    pass
                 else:
                     print(f'Ошибка при проверке канала: {e}')
 
@@ -677,7 +751,7 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
                 else:
                     print(f'Такой стрим {stream_data[0]} уже постили на канале: {post_to_channel}')
 
-        print(f'Ожидаю тайм-аут: {int(config["global_stream_check_cd"])} с.')
+        # print(f'Ожидаю тайм-аут: {int(config["global_stream_check_cd"])} с.')
         await asyncio.sleep(int(config["global_stream_check_cd"]))
 
 

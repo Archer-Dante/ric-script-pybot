@@ -4,6 +4,9 @@ from modules.message_manager import get_phrase  # импорт своей фун
 class CommandsNames:
     HELP = "help"
     BOTS_KICKED = "bots-kicked"
+    MODERATION = "mod"
+    AUTOKICK = "autokick"
+    DAILY = "daily"
     TOGGLE = "toggle"
     STREAM = "stream"
 
@@ -41,7 +44,7 @@ class Bcolors:
     UNDERLINE = '\033[4m'
 
 
-class FarewallManager:
+class CachedBans:
     userid_list: list = []
 
     @classmethod

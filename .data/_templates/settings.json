@@ -9,7 +9,7 @@
                         "active": "False",
                         "ban_instead": "False",
                         "required_role_id": 0,
-                        "channel_to_farewall": 0,
+                        "channel_to_farewell": 0,
                         "kick_ban_reason": ""
                 },
                 "trap_channels": [

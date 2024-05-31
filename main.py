@@ -421,15 +421,13 @@ async def cmd_daily(ctx):
 @discord.ext.commands.guild_only()
 @discord.ext.commands.has_permissions(administrator=True)
 async def cmd_autokick(ctx, action: typing.Literal[
-    "setup-trap", "remove-trap", "for-role", "ban-kicked", "notify-here", "clear-all"],
+    "setup-trap", "remove-traps", "for-role", "ban-kicked", "notify-here", "clear-all"],
                        arg1: str = None, arg2: str = None
                        ):
     if action == "setup-trap":
         if arg1 is None or arg2 is None:
-            await hybrid_cmd_router(ctx,
-                                    f'Используя `{action}` нужно указывать оба аргумента: ссылку на сообщение и эмодзи!')
+            await hybrid_cmd_router(ctx, f'Используя `{action}` нужно указывать оба аргумента: ссылку на сообщение и эмодзи!')
         else:
-            print("Прошло")
             all_traps: list = SDI.get_settings(ctx.guild.id, "autokick", "trap_channels")
             msg = arg1
             react = arg2
@@ -442,15 +440,73 @@ async def cmd_autokick(ctx, action: typing.Literal[
                 if guild_id != str(ctx.guild.id):
                     raise ValueError(f"Нельзя ставить ловушки на другом сервере! Фу таким быть!")
 
-                # for trap_data in all_traps:
-                #   print(f'ID канала: {trap_data[0]}\nID сообщения: {trap_data[1]}\nID эмодзи: {trap_data[2]}\n')
-                new_data = [channel_id, msg_id, react_id]
-                all_traps.append(new_data)
-                SDI.set_settings(ctx.guild.id, all_traps, "autokick", "trap_channels")
+                for trap in all_traps:
+                    if trap[0] == channel_id and trap[1] == msg_id and trap[2] == react_id:
+                        raise ValueError(f'Такая ловушка уже есть! {react}')
+
+                ch_obj = bot.get_channel(int(channel_id))
+                msg_obj = await ch_obj.fetch_message(int(msg_id))
+                try:
+                    await msg_obj.add_reaction(str(react))
+                    new_data = [channel_id, msg_id, react_id]
+                    all_traps.append(new_data)
+                    SDI.set_settings(ctx.guild.id, all_traps, "autokick", "trap_channels")
+                    reply = (f'**Ловушка успешно установлена и эмодзи добавлен!**\n\n'
+                             f'**• {react} • https://discord.com/channels/{ctx.guild.id}/{channel_id}/{msg_id} • {react} •**')
+                    await hybrid_cmd_router(ctx, reply)
+
+                except Exception as e:
+                    await hybrid_cmd_router(ctx, f'Что-то пошло не так. Вы точно добавили смайлик?\n'
+                                                 f'Добавлять можно только смайлы с серверов где я присутствую.\n'
+                                                 f'{str(e)}')
+                pass
 
             except ValueError as e:
                 await hybrid_cmd_router(ctx, str(e))
 
+    elif action == "remove-traps":
+        if arg1 is None:
+            await hybrid_cmd_router(ctx, f'Используя `{action}` нужно указать ссылку на сообщение в первое поле')
+        else:
+            all_traps: list = SDI.get_settings(ctx.guild.id, "autokick", "trap_channels")
+            msg = arg1
+            channel_id: str = msg.split("/")[5]
+            msg_id: str = msg.split("/")[6]
+
+            # вместо того чтобы сделать копию all_traps и просто перезаписать я сделал цикл через while в стиле
+            # обычных ЯП. Это не практично, но хотелось сделать именно такую реализацию.
+            total_removed = 0
+            trap = 0
+            while trap < len(all_traps):
+                if all_traps[trap][0] == channel_id and all_traps[trap][1] == msg_id:
+                    ch_obj = bot.get_channel(int(channel_id))
+                    msg_obj = await ch_obj.fetch_message(int(msg_id))
+
+                    msg_reactions: list = msg_obj.reactions
+                    for this_react in msg_reactions:
+                        try:
+                            await msg_obj.remove_reaction(this_react, ctx.guild.me)
+                        except Exception as e:
+                            print(f'Ошибка удаления ловушки: {e}')
+
+                    total_removed += 1
+                    all_traps.remove(all_traps[trap])
+                else:
+                    trap += 1
+
+            SDI.set_settings(ctx.guild.id, all_traps, "autokick", "trap_channels")
+
+            if total_removed == 0:
+                reply = f'Ловушек на данном сообщении не обнаружено'
+            else:
+                reply = f'Ловушек удалено: {total_removed}'
+            await hybrid_cmd_router(ctx, reply)
+
+        pass
+
+    elif action == "for-role":
+
+        pass
 
 @bot.hybrid_command(name=CommandsNames.TOGGLE,
                     description="Переключить настройку в указанное или противоположное значение")

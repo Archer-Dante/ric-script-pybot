@@ -1,4 +1,5 @@
 import asyncio
+import sys
 import typing
 
 import discord
@@ -417,11 +418,13 @@ async def cmd_daily(ctx):
     await ctx.send("Daily yet not implemented! Stay tuned!!")
 
 
+
+
 @bot.hybrid_command(name=CommandsNames.AUTOKICK, description="Настроить систему автоматических киков")
 @discord.ext.commands.guild_only()
 @discord.ext.commands.has_permissions(administrator=True)
 async def cmd_autokick(ctx, action: typing.Literal[
-    "setup-trap", "remove-traps", "for-role", "ban-kicked", "notify-here", "clear-all"],
+    "setup-trap", "remove-traps", "required-role", "ban-kicked", "notify-here", "clear-all"],
                        arg1: str = None, arg2: str = None
                        ):
     if action == "setup-trap":
@@ -466,7 +469,8 @@ async def cmd_autokick(ctx, action: typing.Literal[
 
     elif action == "remove-traps":
         if arg1 is None:
-            await hybrid_cmd_router(ctx, f'Используя `{action}` нужно указать ссылку на сообщение в первое поле')
+            await hybrid_cmd_router(ctx, f'**Ошибка!**\n\n'
+                                         f'Используя `{action}` нужно указать ссылку на сообщение в первое поле')
         else:
             all_traps: list = SDI.get_settings(ctx.guild.id, "autokick", "trap_channels")
             msg = arg1
@@ -497,15 +501,74 @@ async def cmd_autokick(ctx, action: typing.Literal[
             SDI.set_settings(ctx.guild.id, all_traps, "autokick", "trap_channels")
 
             if total_removed == 0:
-                reply = f'Ловушек на данном сообщении не обнаружено'
+                reply = (f'**Ошибка?**\n\n'
+                         f'Ловушек на данном сообщении не обнаружено')
             else:
-                reply = f'Ловушек удалено: {total_removed}'
+                reply = (f'**Готово!**\n\n'
+                         f'Ловушек удалено: {total_removed}')
             await hybrid_cmd_router(ctx, reply)
-
         pass
 
-    elif action == "for-role":
+    elif action == "required-role":
+        if arg1 is None:
+            await hybrid_cmd_router(ctx, f'**Ошибка!**\n\n'
+                                         f'Используя `{action}` нужно указать роль: ID или @упоминание роли!'
+                                         f'`0` - если хотите отключить требование к роли насовсем.')
+        else:
+            role_data = arg1
+            role_data_cut = role_data[3:-1]
+            # print(type(role_data), "---", role_data)
 
+            try:
+                if role_data.isdigit():
+                    # проверяем является ли переданное значение обычным ID роли
+                    # если там не только цифры, вероятно это не просто ID
+                    # конвертируем в числовой тип если всё-таки только цифры
+                    role_data = int(role_data)
+                    if role_data == 0:
+                        # если передали 0, значит ничего кроме как записи не требуется
+                        SDI.set_settings(ctx.guild.id, role_data, "autokick", "options", "required_role_id")
+                        await hybrid_cmd_router(ctx, f'**Готово!**\n\n'
+                                                     f'Требование роли для срабатывания ловушек отключено!')
+                    else:
+                        # если это число, но не 0, значит нужно проверить, что это всё же существующая роль
+                        role_abc_obj: [discord.Role | None] = None
+                        try:
+                            # проверка наличия роли на текущем сервере
+                            role_abc_obj = ctx.guild.get_role(role_data)
+                        except Exception:
+                            print(f'Ошибка при проверке роли во время команды {action}')
+
+                        print(type(role_abc_obj), role_abc_obj)
+
+                        if role_abc_obj is None:
+                            # если такой роли нет - сообщить об этом
+                            await hybrid_cmd_router(ctx, f'**Ошибка!**\n\n'
+                                                         f'Роли с таким ID нет на данном сервере!')
+                        elif isinstance(role_abc_obj, discord.role.Role):
+                            # если такая роль есть - выставить этот ID в конфиг
+                            SDI.set_settings(ctx.guild.id, role_data, "autokick", "options", "required_role_id")
+                            await hybrid_cmd_router(ctx, f'Для срабатывания ловушек установлена новая роль: {role_abc_obj.mention}\n'
+                                                         f'Теперь ловушки будут рбаотать только на владельцев данной роли!')
+                        else:
+                            print("Нет совпадений?")
+                            await hybrid_cmd_router(ctx, f'**Ошибка!**\n\n'
+                                                         f'Что-то пошло не так :(\n'
+                                                         f'Советую обратиться к моему разработчику.!')
+                elif role_data_cut.isdigit():
+                    # предыдущая проверка неверна (роль не является набором цифр) то пробуем обрезать строку-меншен
+                    # и проверить повторно, и если числовой набор обнаружен конвертируем в числовой тип
+                    role_data = int(role_data_cut)
+                    SDI.set_settings(ctx.guild.id, role_data_cut, "autokick", "options", "required_role_id")
+                    await hybrid_cmd_router(ctx, f'**Готово!**\n\n'
+                                                 f'Для срабатывания ловушек установлена новая роль: <@&{role_data}>\n'
+                                                 f'Теперь ловушки будут рбаотать только на владельцев данной роли!')
+                else:
+                    # если числа мы не добились ни у изначального значения, ни после обрезки, то аргумент неверный
+                    raise ValueError
+            except ValueError as e:
+                await hybrid_cmd_router(ctx, f'**Ошибка!**\n\n'
+                                             f'Указанный аргумент не является ID роли, @упоминанием или 0')
         pass
 
 @bot.hybrid_command(name=CommandsNames.TOGGLE,
@@ -769,8 +832,11 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
                     # если ошибка содержит не найденный аргумент - значит его нет, как и трансляции
                     # print(f'Нет активных трансляций')
                     pass
+                elif 'tabRenderer' in str(e):
+                    # значит вкладки трансляций нет или есть, но их ещё ни разу не было на данном канале
+                    pass
                 else:
-                    print(f'Ошибка при проверке канала: {e}')
+                    print(f'Ошибка при проверке канала: {e} | {channel_url}')
 
         elif "twitch" in channel_url:
             user_login = channel_url[channel_url.rfind("/") + 1:]

@@ -439,9 +439,12 @@ async def cmd_autokick(ctx, action: typing.Literal[
                 msg_id: int = int(msg.split("/")[6])
                 react_id: [int | str]
 
-                if is_unicode_emoji(react) == False:
-                    # если это не юникодовый смайл, восстанавливаем числовой тип
-                    react_id: int = int((react.split(":")[2])[0:-1])
+                if is_unicode_emoji(react) == False and react.isdigit():
+                    if ctx.guild.get_emoji(int(react)) is not None:
+                        # если это не юникодовый смайл, восстанавливаем числовой тип
+                        react_id: int = int((react.split(":")[2])[0:-1])
+                    else:
+                        raise ValueError(f'{arg2} не является стандартным или загруженным на сервер эмодзи')
                 else:
                     # если это всё же юникодовый смайл
                     if len(react) == 1:

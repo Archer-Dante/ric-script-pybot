@@ -36,7 +36,6 @@ headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
 bot = commands.Bot(command_prefix="рик", intents=discord.Intents.all())
 
 
-
 class ServerDataInterface:
     data: dict[str] = {}
     yt_cache = defaultdict(list)
@@ -329,6 +328,12 @@ async def hybrid_cmd_router(ctx_or_msg, reply):
         print(f'Ошибка гибридной обёртки: {e}')
 
 
+async def config_make_validate(guild_object):
+    print(f"- {guild_object.id} (name: {guild_object.name})")
+    FileAction.server_files_check(guild_object.id)
+    ServerDataInterface(guild_object.id)
+
+
 # sys.exit()
 
 @bot.event
@@ -339,12 +344,8 @@ async def on_ready():
     guild_count = 0
 
     for guild in bot.guilds:
-        print(f"- {guild.id} (name: {guild.name})")
+        await config_make_validate(guild)
         guild_count = guild_count + 1
-        FileAction.server_files_check(guild.id)
-        ServerDataInterface(guild.id)
-
-        # SDI.manage_list(guild.id,1,2, "streams", "streaming_channels")
 
     print("Бот находится в " + str(guild_count) + " гильдиях.\n")
 
@@ -436,7 +437,7 @@ async def cmd_autokick(ctx, action: typing.Literal[
                 guild_id: int = int(msg.split("/")[4])
                 channel_id: int = int(msg.split("/")[5])
                 msg_id: int = int(msg.split("/")[6])
-                react_id: [int|str]
+                react_id: [int | str]
 
                 if is_unicode_emoji(react) == False:
                     # если это не юникодовый смайл, восстанавливаем числовой тип
@@ -698,8 +699,14 @@ async def on_raw_reaction_add(reaction):  # должно работать даж
                 # 2 - id эмодзи
                 if ((trap_setted_up[2] == reaction.emoji.id) or
                         (reaction.emoji.is_custom_emoji() == False and trap_setted_up[2] == reaction.emoji.name)):
+
                     ch_id: int = SDI.get_settings(reaction.guild_id, "autokick", "options", "channel_to_farewell")
-                    channel_abc_farewell = await bot.fetch_channel(ch_id)
+
+                    channel_abc_farewell: [discord.abc.GuildChannel | discord.TextChannel] = None
+                    if ch_id == 0:
+                        await asyncio.sleep(1)
+                    else:
+                        channel_abc_farewell = await bot.fetch_channel(ch_id)
 
                     guild_abc = await bot.fetch_guild(reaction.guild_id)
                     reason: str = SDI.get_settings(reaction.guild_id, "autokick", "options", "kick_ban_reason")
@@ -711,7 +718,7 @@ async def on_raw_reaction_add(reaction):  # должно работать даж
                     SDI.autokick_increase(reaction.guild_id)
                     if ch_id != 0:
                         await channel_abc_farewell.send(f'{CachedBans.get_formated_phrase(reaction.member.mention)}')
-                        await hybrid_cmd_router(channel_abc_farewell, f'- подстрелено негодников: {kicked_total+1}')
+                        await hybrid_cmd_router(channel_abc_farewell, f'- подстрелено негодников: {kicked_total + 1}')
 
                     try:
                         if SDI.get_settings(reaction.guild_id, "autokick", "options", "ban_instead") != True:
@@ -737,33 +744,46 @@ async def on_raw_reaction_add(reaction):  # должно работать даж
 
 
 @bot.event
-async def on_member_remove(user_gone):
+async def on_member_remove(member):
     # если в списке - убрать из списка и отменить дальнейшую процедуру
     # отмена нужна чтобы при повторном заходе выходе в пределах одной сессии бота он не помнил предыдущий случай
     print('Пользователь покинул сервер. Был ли обработан в другом событии: ')
-    if CachedBans.in_list(user_gone.id):
+    if CachedBans.in_list(member.id):
         print(f'Список ID до: {CachedBans.userid_list}')
-        CachedBans.remove_from_list(user_gone.id)
-        print(f'Да, под ID {user_gone.id} его кикнул РИК-Бот. Теперь пользователь удалён из списка.')
+        CachedBans.remove_from_list(member.id)
+        print(f'Да, под ID {member.id} его кикнул РИК-Бот. Теперь пользователь удалён из списка.')
         print(f'Список ID после: {CachedBans.userid_list}')
         return
     print('Нет, он вышел сам или был кикнут вручную.')
 
-    if SDI.get_settings(user_gone.guild.id, "notify", "options", "member_quits") != "True":
+    if SDI.get_settings(member.guild.id, "notify", "options", "member_quits") != "True":
         print('Сообщения о выходах отключены')
         return
 
-    channel_id = SDI.get_settings(user_gone.guild.id, "autokick", "options", "channel_to_farewall")
+    channel_id = SDI.get_settings(member.guild.id, "autokick", "options", "channel_to_farewall")
     channel_abc = await bot.fetch_channel(channel_id)  # получение канала куда постить
 
     # отправка сообщения, делая запрос в класс, который в свою очередь запрашивает рандом из другой функции
     # и возвращает форматированный и готовый к отправке вариант
-    await channel_abc.send(f'{CachedBans.get_formated_phrase(user_gone.mention)}')
+    await channel_abc.send(f'{CachedBans.get_formated_phrase(member.mention)}')
     print('Done')
+
+@bot.event
+async def on_guild_join(guild_obj):
+    await asyncio.sleep(3)
+    await config_make_validate(guild_obj)
+    if SDI.get_settings(guild_obj.id, "autokick", "options", "channel_to_farewell") == 0:
+        std_sys_channel = guild_obj.system_channel.id
+        SDI.set_settings(guild_obj.id, std_sys_channel, "autokick", "options", "channel_to_farewell")
+    pass
+    try:
+        await bot.tree.sync(guild=guild_obj)
+    except Exception as e:
+        print(f'Ошибка при добавлении команд на сервер: {e}')
 
 
 async def check_live_streams():
-    for server_id in SDI.data:
+    for server_id in SDI.data.copy():
         stream_settings = SDI.get_settings(server_id, "notify", "options", "stream_starts")
         # print(f'Для сервера {ServerID} настройка равна: {stream_settings}')
         if stream_settings == "True":

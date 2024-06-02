@@ -3,15 +3,16 @@ import shutil
 
 
 class FileAction:
-    def __init__(self, filename, openmethod):
+    def __init__(self, filename, openmethod, encoding=None):
         self.filename = filename
         self.openmethod = openmethod
         self.file_object = None
+        self.encoding = 'utf-8'
         if not os.path.exists(filename) and os.path.isfile(filename):
             raise Exception("Файла не существует. Нужно сначала его создать!")
 
     def __enter__(self):
-        self.file_object = open(self.filename, self.openmethod)
+        self.file_object = open(self.filename, self.openmethod, encoding=self.encoding)
         return self.file_object
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -54,7 +55,7 @@ class FileAction:
                         shutil.copy2(file_path_on_templates, file_path_on_server)
                         print(f'Файл успешно пересоздан из шаблона')
                     except Exception as e:
-                        print(f'Ошибка пересоздания файла \ копирования шаблона: {e}')
+                        print(f'Ошибка пересоздания файла / копирования шаблона: {e}')
                         try:
                             print(f'Попытка пересозания папки...')
                             folders_only = file_path_on_server[0 : file_path_on_server.find(file)]

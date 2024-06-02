@@ -1,5 +1,4 @@
 import asyncio
-import sys
 import typing
 
 import discord
@@ -17,7 +16,7 @@ from modules.load_config import config  # импорт результата от
 from modules.main_const_and_cls import Bcolors  # импорт кодов цветов и форматирования для консоли
 from modules.main_const_and_cls import CachedBans  # импорт генератора сообщений
 from modules.main_const_and_cls import CommandsNames  # импорт названия команд из констант внутри класса
-from modules.tools import get_average_color  # получение усреднённого цвета RGB
+from modules.tools import get_average_color, is_unicode_emoji  # получение усреднённого цвета RGB
 
 import requests
 from bs4 import BeautifulSoup
@@ -36,7 +35,6 @@ headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
 
 bot = commands.Bot(command_prefix="рик", intents=discord.Intents.all())
 
-print(f'Выбранная локализация: {config["current_locale"]}')
 
 
 class ServerDataInterface:
@@ -107,6 +105,7 @@ class ServerDataInterface:
 
     @classmethod
     def set_settings(cls, s_id, changing_value, *args):
+        # print(changing_value)
         cfg_branch = cls.data[str(s_id)]["settings"]
         for subbranch in args:
             if subbranch == args[-1]:  # последний элемент
@@ -161,17 +160,17 @@ class ServerDataInterface:
 
     @classmethod
     def save_cfgs(cls, s_id):
-        # print(str(s_id))
         # print(cls.data)
+        # print(cls.data[str(s_id)])
         for cfg in cls.data[str(s_id)]:
             save_path = os.path.join(config["server_data_path"], str(s_id), cfg)
-            with FileAction(f'{save_path}.json', "w") as json_file:
+            with FileAction(f'{save_path}.json', "w", encoding='utf-8') as json_file:
                 try:
                     # cls.autokick_toggle(cls, s_id)
-                    json.dump(cls.data[str(s_id)][cfg], json_file, indent=8)
+                    json.dump(cls.data[str(s_id)][cfg], json_file, indent=8, ensure_ascii=False)
                 except Exception as e:
                     print(f"Ошибка: {e}")
-                    json.dump(cls.data[str(s_id)][cfg], json_file, indent=8)
+                    json.dump(cls.data[str(s_id)][cfg], json_file, indent=8, ensure_ascii=False)
         pass
 
     @classmethod
@@ -432,11 +431,22 @@ async def cmd_autokick(ctx, action: typing.Literal[
             all_traps: list = SDI.get_settings(ctx.guild.id, "autokick", "trap_channels")
             msg = arg1
             react = arg2
+            print(type(react), react, len(react))
             try:
                 guild_id: int = int(msg.split("/")[4])
                 channel_id: int = int(msg.split("/")[5])
                 msg_id: int = int(msg.split("/")[6])
-                react_id: int = int((react.split(":")[2])[0:-1])
+                react_id: [int|str]
+
+                if is_unicode_emoji(react) == False:
+                    # если это не юникодовый смайл, восстанавливаем числовой тип
+                    react_id: int = int((react.split(":")[2])[0:-1])
+                else:
+                    # если это всё же юникодовый смайл
+                    if len(react) == 1:
+                        react_id: str = arg2
+                    else:
+                        raise ValueError(f'{arg2} не является стандартным или загруженным на сервер эмодзи')
 
                 if guild_id != ctx.guild.id:
                     raise ValueError(f"Нельзя ставить ловушки на другом сервере! Фу таким быть!")
@@ -659,16 +669,16 @@ async def on_raw_reaction_add(reaction):  # должно работать даж
     message_bdy = message_id.content
     time_string = f'{datetime.now().date().strftime("%d-%m-%Y")} - {datetime.now().time().strftime("%H:%M:%S")}'
 
-    print(
-        f'{Bcolors.BOLD}Timestamp:{Bcolors.ENDC} {Bcolors.OKGREEN}{time_string}{Bcolors.ENDC}\n'
-        f'{Bcolors.BOLD}ID Сервера:{Bcolors.ENDC} "{await bot.fetch_guild(reaction.guild_id)}" - {reaction.guild_id}\n'
-        f'{Bcolors.BOLD}ID Сообщения:{Bcolors.ENDC} {reaction.message_id}\n'
-        f'{Bcolors.BOLD}Эмодзи:{Bcolors.ENDC} <:{reaction.emoji.name}:{reaction.emoji.id}> \n'
-        f'{Bcolors.BOLD}ID Юзера:{Bcolors.ENDC} {reaction.user_id} под ником {reaction.member.display_name} ({reaction.member.name})\n'
-        f'{Bcolors.BOLD}Ссылка на сообщение:{Bcolors.ENDC}\n'
-        f'https://discord.com/channels/{reaction.guild_id}/{reaction.channel_id}/{reaction.message_id}\n'
-        f'{Bcolors.BOLD}Тело сообщения:{Bcolors.ENDC}\n{Bcolors.OKCYAN}{message_bdy}{Bcolors.ENDC}\n'
-        f'{Bcolors.BOLD}Автор сообщения: {Bcolors.ENDC}{message_id.author.display_name} ({message_id.author.global_name})')
+    # print(
+    #     f'{Bcolors.BOLD}Timestamp:{Bcolors.ENDC} {Bcolors.OKGREEN}{time_string}{Bcolors.ENDC}\n'
+    #     f'{Bcolors.BOLD}ID Сервера:{Bcolors.ENDC} "{await bot.fetch_guild(reaction.guild_id)}" - {reaction.guild_id}\n'
+    #     f'{Bcolors.BOLD}ID Сообщения:{Bcolors.ENDC} {reaction.message_id}\n'
+    #     f'{Bcolors.BOLD}Эмодзи:{Bcolors.ENDC} <:{reaction.emoji.name}:{reaction.emoji.id}> \n'
+    #     f'{Bcolors.BOLD}ID Юзера:{Bcolors.ENDC} {reaction.user_id} под ником {reaction.member.display_name} ({reaction.member.name})\n'
+    #     f'{Bcolors.BOLD}Ссылка на сообщение:{Bcolors.ENDC}\n'
+    #     f'https://discord.com/channels/{reaction.guild_id}/{reaction.channel_id}/{reaction.message_id}\n'
+    #     f'{Bcolors.BOLD}Тело сообщения:{Bcolors.ENDC}\n{Bcolors.OKCYAN}{message_bdy}{Bcolors.ENDC}\n'
+    #     f'{Bcolors.BOLD}Автор сообщения: {Bcolors.ENDC}{message_id.author.display_name} ({message_id.author.global_name})')
 
     required_role_id: int = SDI.get_settings(reaction.guild_id, "autokick", "options", "required_role_id")
     trap_channels: list = SDI.get_settings(reaction.guild_id, "autokick", "trap_channels")
@@ -681,12 +691,13 @@ async def on_raw_reaction_add(reaction):  # должно работать даж
         if x.id == required_role_id or required_role_id == 0:
             # проверяем все сообщения, на случай если на одном сообщении несколько ловушек
             for trap_setted_up in trap_channels:
-                print(f'{trap_setted_up[1]} == {reaction.message_id}')
+                # пропускать дальнейшую обработку, если сообщение имеет другой ID
+                if trap_setted_up[1] != reaction.message_id: continue
                 # 0 - id канала
                 # 1 - id сообщения
                 # 2 - id эмодзи
-                if int(trap_setted_up[1]) == reaction.message_id and int(trap_setted_up[2]) == reaction.emoji.id:
-
+                if ((trap_setted_up[2] == reaction.emoji.id) or
+                        (reaction.emoji.is_custom_emoji() == False and trap_setted_up[2] == reaction.emoji.name)):
                     ch_id: int = SDI.get_settings(reaction.guild_id, "autokick", "options", "channel_to_farewell")
                     channel_abc_farewell = await bot.fetch_channel(ch_id)
 

@@ -6,18 +6,13 @@
         },
         "autokick": {
                 "options": {
-                        "active": "False",
-                        "ban_instead": "False",
+                        "active": false,
+                        "ban_instead": false,
                         "required_role_id": 0,
                         "channel_to_farewell": 0,
                         "kick_ban_reason": ""
                 },
                 "trap_channels": [
-                        [
-                                "925204884054229033",
-                                "1072806217824600074",
-                                "1229599440352968725"
-                        ]
                 ]
         },
         "notify": {

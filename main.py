@@ -208,9 +208,9 @@ class ServerDataInterface:
     def autokick_increase(cls, s_id):
         cfg_branch = cls.data[str(s_id)]["stats"]
         value = cfg_branch["autokick_count"]
-        print("Было: ", value[0])
-        cfg_branch["autokick_count"] = str(int(value) + 1)
-        print("Стало после нового кика: ", value[0])
+        print("Было: ", value)
+        cfg_branch["autokick_count"] = int(value) + 1
+        print("Стало после нового кика: ", cfg_branch["autokick_count"])
         print("Секция конфига: \n", cls.data[str(s_id)]["stats"])
         cls.save_cfgs(s_id)
         pass
@@ -391,7 +391,6 @@ async def on_ready():
 
     while True:
         total_stream_checks_awaits = SDI.get_total_stream_checks()
-        print(sum(total_stream_checks_awaits))
         print(f'Всего стрим-каналов на обработке: {total_stream_checks_awaits}')
         global_cd = int(config["global_stream_check_cd"]) * sum(total_stream_checks_awaits)
         if global_cd == 0:
@@ -418,8 +417,6 @@ async def cmd_daily(ctx):
     await ctx.send("Daily yet not implemented! Stay tuned!!")
 
 
-
-
 @bot.hybrid_command(name=CommandsNames.AUTOKICK, description="Настроить систему автоматических киков")
 @discord.ext.commands.guild_only()
 @discord.ext.commands.has_permissions(administrator=True)
@@ -429,28 +426,29 @@ async def cmd_autokick(ctx, action: typing.Literal[
                        ):
     if action == "setup-trap":
         if arg1 is None or arg2 is None:
-            await hybrid_cmd_router(ctx, f'Используя `{action}` нужно указывать оба аргумента: ссылку на сообщение и эмодзи!')
+            await hybrid_cmd_router(ctx,
+                                    f'Используя `{action}` нужно указывать оба аргумента: ссылку на сообщение и эмодзи!')
         else:
             all_traps: list = SDI.get_settings(ctx.guild.id, "autokick", "trap_channels")
             msg = arg1
             react = arg2
             try:
-                guild_id: str = msg.split("/")[4]
-                channel_id: str = msg.split("/")[5]
-                msg_id: str = msg.split("/")[6]
-                react_id: str = (react.split(":")[2])[0:-1]
+                guild_id: int = int(msg.split("/")[4])
+                channel_id: int = int(msg.split("/")[5])
+                msg_id: int = int(msg.split("/")[6])
+                react_id: int = int((react.split(":")[2])[0:-1])
 
-                if guild_id != str(ctx.guild.id):
+                if guild_id != ctx.guild.id:
                     raise ValueError(f"Нельзя ставить ловушки на другом сервере! Фу таким быть!")
 
                 for trap in all_traps:
                     if trap[0] == channel_id and trap[1] == msg_id and trap[2] == react_id:
                         raise ValueError(f'Такая ловушка уже есть! {react}')
 
-                ch_obj = bot.get_channel(int(channel_id))
-                msg_obj = await ch_obj.fetch_message(int(msg_id))
+                ch_obj = bot.get_channel(channel_id)
+                msg_obj = await ch_obj.fetch_message(msg_id)
                 try:
-                    await msg_obj.add_reaction(str(react))
+                    await msg_obj.add_reaction(react)
                     new_data = [channel_id, msg_id, react_id]
                     all_traps.append(new_data)
                     SDI.set_settings(ctx.guild.id, all_traps, "autokick", "trap_channels")
@@ -474,8 +472,8 @@ async def cmd_autokick(ctx, action: typing.Literal[
         else:
             all_traps: list = SDI.get_settings(ctx.guild.id, "autokick", "trap_channels")
             msg = arg1
-            channel_id: str = msg.split("/")[5]
-            msg_id: str = msg.split("/")[6]
+            channel_id: int = int(msg.split("/")[5])
+            msg_id: int = int(msg.split("/")[6])
 
             # вместо того чтобы сделать копию all_traps и просто перезаписать я сделал цикл через while в стиле
             # обычных ЯП. Это не практично, но хотелось сделать именно такую реализацию.
@@ -483,8 +481,8 @@ async def cmd_autokick(ctx, action: typing.Literal[
             trap = 0
             while trap < len(all_traps):
                 if all_traps[trap][0] == channel_id and all_traps[trap][1] == msg_id:
-                    ch_obj = bot.get_channel(int(channel_id))
-                    msg_obj = await ch_obj.fetch_message(int(msg_id))
+                    ch_obj = bot.get_channel(channel_id)
+                    msg_obj = await ch_obj.fetch_message(msg_id)
 
                     msg_reactions: list = msg_obj.reactions
                     for this_react in msg_reactions:
@@ -527,7 +525,7 @@ async def cmd_autokick(ctx, action: typing.Literal[
                     role_data = int(role_data)
                     if role_data == 0:
                         # если передали 0, значит ничего кроме как записи не требуется
-                        SDI.set_settings(ctx.guild.id, role_data, "autokick", "options", "required_role_id")
+                        SDI.set_settings(ctx.guild.id, int(role_data), "autokick", "options", "required_role_id")
                         await hybrid_cmd_router(ctx, f'**Готово!**\n\n'
                                                      f'Требование роли для срабатывания ловушек отключено!')
                     else:
@@ -547,9 +545,10 @@ async def cmd_autokick(ctx, action: typing.Literal[
                                                          f'Роли с таким ID нет на данном сервере!')
                         elif isinstance(role_abc_obj, discord.role.Role):
                             # если такая роль есть - выставить этот ID в конфиг
-                            SDI.set_settings(ctx.guild.id, role_data, "autokick", "options", "required_role_id")
-                            await hybrid_cmd_router(ctx, f'Для срабатывания ловушек установлена новая роль: {role_abc_obj.mention}\n'
-                                                         f'Теперь ловушки будут рбаотать только на владельцев данной роли!')
+                            SDI.set_settings(ctx.guild.id, int(role_data), "autokick", "options", "required_role_id")
+                            await hybrid_cmd_router(ctx,
+                                                    f'Для срабатывания ловушек установлена новая роль: {role_abc_obj.mention}\n'
+                                                    f'Теперь ловушки будут рбаотать только на владельцев данной роли!')
                         else:
                             print("Нет совпадений?")
                             await hybrid_cmd_router(ctx, f'**Ошибка!**\n\n'
@@ -559,7 +558,7 @@ async def cmd_autokick(ctx, action: typing.Literal[
                     # предыдущая проверка неверна (роль не является набором цифр) то пробуем обрезать строку-меншен
                     # и проверить повторно, и если числовой набор обнаружен конвертируем в числовой тип
                     role_data = int(role_data_cut)
-                    SDI.set_settings(ctx.guild.id, role_data_cut, "autokick", "options", "required_role_id")
+                    SDI.set_settings(ctx.guild.id, int(role_data_cut), "autokick", "options", "required_role_id")
                     await hybrid_cmd_router(ctx, f'**Готово!**\n\n'
                                                  f'Для срабатывания ловушек установлена новая роль: <@&{role_data}>\n'
                                                  f'Теперь ловушки будут рбаотать только на владельцев данной роли!')
@@ -570,6 +569,7 @@ async def cmd_autokick(ctx, action: typing.Literal[
                 await hybrid_cmd_router(ctx, f'**Ошибка!**\n\n'
                                              f'Указанный аргумент не является ID роли, @упоминанием или 0')
         pass
+
 
 @bot.hybrid_command(name=CommandsNames.TOGGLE,
                     description="Переключить настройку в указанное или противоположное значение")
@@ -687,12 +687,12 @@ async def on_raw_reaction_add(reaction):  # должно работать даж
                 # 2 - id эмодзи
                 if int(trap_setted_up[1]) == reaction.message_id and int(trap_setted_up[2]) == reaction.emoji.id:
 
-                    ch_id = SDI.get_settings(reaction.guild_id, "autokick", "options", "channel_to_farewell")
-                    channel_abc_farewell = await bot.fetch_channel(int(ch_id))
+                    ch_id: int = SDI.get_settings(reaction.guild_id, "autokick", "options", "channel_to_farewell")
+                    channel_abc_farewell = await bot.fetch_channel(ch_id)
 
                     guild_abc = await bot.fetch_guild(reaction.guild_id)
                     reason: str = SDI.get_settings(reaction.guild_id, "autokick", "options", "kick_ban_reason")
-                    kicked_total = ServerDataInterface.get_stats(reaction.guild_id, "autokick_count")
+                    kicked_total: int = SDI.get_stats(reaction.guild_id, "autokick_count")
 
                     if not CachedBans.in_list(reaction.member.id):  # проверяем есть ли ИД в списке класса-менеджера
                         CachedBans.add_to_list(reaction.member.id)  # добавляем если отсутствует
@@ -703,9 +703,11 @@ async def on_raw_reaction_add(reaction):  # должно работать даж
                         await hybrid_cmd_router(channel_abc_farewell, f'- подстрелено негодников: {kicked_total}')
 
                     try:
-                        if SDI.get_settings(reaction.guild_id, "autokick", "options", "ban_instead") != "True":
+                        if SDI.get_settings(reaction.guild_id, "autokick", "options", "ban_instead") != True:
+                            print(f'{reaction.member.name} был кикнут ботом')
                             await guild_abc.kick(reaction.member, reason=reason)
                         else:
+                            print(f'{reaction.member.name} был забанен ботом')
                             await guild_abc.ban(reaction.member, reason=reason)
                     except Exception as e:
                         print(f'Ошибка воздействия на бот-аккаунт: {e}')

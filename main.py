@@ -700,7 +700,7 @@ async def on_raw_reaction_add(reaction):  # должно работать даж
                     SDI.autokick_increase(reaction.guild_id)
                     if ch_id != 0:
                         await channel_abc_farewell.send(f'{CachedBans.get_formated_phrase(reaction.member.mention)}')
-                        await hybrid_cmd_router(channel_abc_farewell, f'- подстрелено негодников: {kicked_total}')
+                        await hybrid_cmd_router(channel_abc_farewell, f'- подстрелено негодников: {kicked_total+1}')
 
                     try:
                         if SDI.get_settings(reaction.guild_id, "autokick", "options", "ban_instead") != True:

@@ -382,12 +382,12 @@ async def on_ready():
     #     new_avatar = f.read()
     # await bot.user.edit(avatar=new_avatar)
 
-    # try:
-    #     commands_list = await bot.tree.sync()
-    #     print(f'Синхронизировано команд: {len(commands_list)} - {commands_list}')
-    #     # for x in commands_list: BotInterface.commands_list.append(x)
-    # except Exception as e:
-    #     print(e)
+    try:
+        commands_list = await bot.tree.sync()
+        print(f'Синхронизировано команд: {len(commands_list)} - {commands_list}')
+        # for x in commands_list: BotInterface.commands_list.append(x)
+    except Exception as e:
+        print(e)
 
     while True:
         total_stream_checks_awaits = SDI.get_total_stream_checks()
@@ -421,9 +421,8 @@ async def cmd_daily(ctx):
 @discord.ext.commands.guild_only()
 @discord.ext.commands.has_permissions(administrator=True)
 async def cmd_autokick(ctx, action: typing.Literal[
-    "setup-trap", "remove-traps", "required-role", "ban-kicked", "notify-here", "clear-all"],
-                       arg1: str = None, arg2: str = None
-                       ):
+    "setup-trap", "remove-traps", "required-role", "ban-instead", "notify-here", "clear-all"],
+                       arg1: str = None, arg2: str = None):
     if action == "setup-trap":
         if arg1 is None or arg2 is None:
             await hybrid_cmd_router(ctx,
@@ -582,6 +581,33 @@ async def cmd_autokick(ctx, action: typing.Literal[
             except ValueError as e:
                 await hybrid_cmd_router(ctx, f'**Ошибка!**\n\n'
                                              f'Указанный аргумент не является ID роли, @упоминанием или 0')
+        pass
+
+    elif action == "ban-instead":
+        if arg1 is None:
+            await hybrid_cmd_router(ctx,f'Используя `{action}` нужно указать Yes или True для включения\n'
+                                        f'или No или False для выключения')
+        else:
+            value: str = arg1.lower()
+            try:
+                if value == "yes" or value == "true":
+                    if SDI.get_settings(ctx.guild.id, "autokick", "options", "ban_instead") == False:
+                        SDI.set_settings(ctx.guild.id, True, "autokick", "options", "ban_instead")
+                        await hybrid_cmd_router(ctx, f'**Готово!**\n\n'
+                                                     f'Теперь ловушки будут приводить к бану на сервере!')
+                    else:
+                        raise ValueError(f"**Ошибка!**\n\n"
+                                         f"Функция бана уже включена!")
+                elif value == "no" or value == "false":
+                    if SDI.get_settings(ctx.guild.id, "autokick", "options", "ban_instead") == True:
+                        SDI.set_settings(ctx.guild.id, False, "autokick", "options", "ban_instead")
+                        await hybrid_cmd_router(ctx, f'**Готово!**\n\n'
+                                                     f'Теперь ловушки будут приводить к кику с сервера!')
+                    else:
+                        raise ValueError(f"**Ошибка!**\n\n"
+                                         f"Функция бана уже отключена!")
+            except ValueError as e:
+                await hybrid_cmd_router(ctx, str(e))
         pass
 
 

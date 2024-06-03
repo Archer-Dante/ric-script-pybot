@@ -14,7 +14,7 @@ def get_average_color(image_url):
     avg_packed = (int(x) for x in average_color)
     avg_packed = list(avg_packed)
     final_color_pack = if_dark_make_brighter(*avg_packed)
-    print(final_color_pack)
+    # print(final_color_pack)
     return final_color_pack
 
 
@@ -30,9 +30,9 @@ def get_dominant_color(image_url):
             repack: tuple = (amount, color)
             clean_pixels.append(repack)
     dominant_color: list = (Counter(clean_pixels).most_common(1)[0][0])[1]
-    print(dominant_color)
+    # print(dominant_color)
     final_color_pack = if_dark_make_brighter(*dominant_color)
-    print(final_color_pack)
+    # print(final_color_pack)
     return final_color_pack
 
 

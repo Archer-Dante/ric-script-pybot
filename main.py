@@ -16,7 +16,7 @@ from modules.load_config import config  # импорт результата от
 from modules.main_const_and_cls import Bcolors  # импорт кодов цветов и форматирования для консоли
 from modules.main_const_and_cls import CachedBans  # импорт генератора сообщений
 from modules.main_const_and_cls import CommandsNames  # импорт названия команд из констант внутри класса
-from modules.tools import get_average_color, is_unicode_emoji  # получение усреднённого цвета RGB
+from modules.tools import get_average_color, is_unicode_emoji, get_dominant_color  # получение усреднённого цвета RGB
 
 import requests
 from bs4 import BeautifulSoup
@@ -256,14 +256,14 @@ class ServerDataInterface:
         return cached
 
     @classmethod
-    def update_tw_cache(cls, ch_id, streamer):
+    def update_tw_cache(cls, ch_id, stream):
         """
         Кэширует стримы, которые уже были опубликованы, чтобы не публиковаться повторно.
         Сбрасывается при перезапуске бота.
         :param ch_id: id канала, где был пост
-        :param streamer: стример / логин стримера
+        :param stream: id видео-стрима
         """
-        cls.tw_cache[ch_id].append(streamer)
+        cls.tw_cache[ch_id].append(stream)
 
     @classmethod
     def check_tw_cache(cls, ch_id, streamer):
@@ -382,12 +382,12 @@ async def on_ready():
     #     new_avatar = f.read()
     # await bot.user.edit(avatar=new_avatar)
 
-    try:
-        commands_list = await bot.tree.sync()
-        print(f'Синхронизировано команд: {len(commands_list)} - {commands_list}')
-        # for x in commands_list: BotInterface.commands_list.append(x)
-    except Exception as e:
-        print(e)
+    # try:
+    #     commands_list = await bot.tree.sync()
+    #     print(f'Синхронизировано команд: {len(commands_list)} - {commands_list}')
+    #     # for x in commands_list: BotInterface.commands_list.append(x)
+    # except Exception as e:
+    #     print(e)
 
     while True:
         total_stream_checks_awaits = SDI.get_total_stream_checks()
@@ -793,7 +793,7 @@ async def check_live_streams():
             url_list_of_channels = SDI.get_settings(server_id, "streams", "streaming_channels")
             if len(url_list_of_channels) > 0:
                 # print(f'Список каналов на проверку для сервера {server_id}: {notify_stream_channels}')
-                post_to_channel = SDI.get_settings(server_id, "streams", "options", "post_chid")
+                post_to_channel: int = SDI.get_settings(server_id, "streams", "options", "post_chid")
                 await run_check_for_list(url_list_of_channels, post_to_channel)
             else:
                 # print(f'Список каналов для проверки стримов на сервере {server_id} пуст, хотя функция проверки включена')
@@ -801,6 +801,9 @@ async def check_live_streams():
 
 
 async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None, twitch_type=None):
+    yt_icon = "https://cdn.discordapp.com/emojis/1247105064259293255.webp"
+    tw_icon = "https://cdn.discordapp.com/emojis/1247105082202525746.webp"
+
     for channel_url in url_list_of_channels:
         # print(f'Канал на проверку: {channel_url}')
 
@@ -857,7 +860,7 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
                         )
                         embed.set_thumbnail(url=avatar_url)
                         embed.set_image(url=thumbnail_url)
-                        embed.set_author(name=channel_name, icon_url=avatar_url)
+                        embed.set_author(name=channel_name, icon_url=yt_icon)
                         embed.set_footer(text="Mister RIC approves!")
                         await discord_channel.send(embed=embed)
                     else:
@@ -877,14 +880,18 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
         elif "twitch" in channel_url:
             user_login = channel_url[channel_url.rfind("/") + 1:]
 
-            twitch = await Twitch('2fqly3pgkfd6jbd3cmxdybpyhvkekb', 'fm75x5f7i51jx0389ob1jlyoemjjzm')
-            # 0 - логин \ юзернейм
-            # 1 - заголовок стрима
-            # 2 - название игры
-            # 3 - ссылка на превью
-            # 4 - ссылка на аватар
+            twitch = await Twitch(os.getenv("TWITCH_API_APPID"), os.getenv("TWITCH_API_SECRET"))
+            # 0 - live или пустая строка если стрима нет
+            # 1 - ID видео-стрима
+            # 2 - логин \ юзернейм
+            # 3 - заголовок стрима
+            # 4 - название игры
+            # 5 - ссылка на превью
+            # 6 - ссылка на аватар
             stream_data = []
             async for x in twitch.get_streams(user_login=[user_login]):
+                stream_data.append(x.type)
+                stream_data.append(x.id)
                 stream_data.append(x.user_name)
                 stream_data.append(x.title)
                 stream_data.append(x.game_name)
@@ -893,24 +900,24 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
                 stream_data.append(x.profile_image_url)
 
             if len(stream_data) > 1:
-                if SDI.check_yt_cache(post_to_channel, user_login) != True:
-                    print("Обнаружен активный стрим!")
-                    SDI.update_yt_cache(post_to_channel, user_login)
-                    discord_channel = bot.get_channel(int(post_to_channel))
+                if SDI.check_tw_cache(post_to_channel, stream_data[1]) != True:
+                    print(f'Обнаружен активный стрим! ID стрима: {stream_data[1]}')
+                    SDI.update_tw_cache(post_to_channel, stream_data[1])
+                    discord_channel = bot.get_channel(post_to_channel)
 
                     embed = discord.Embed(
-                        title=f"{stream_data[0]} начинает трансляцию!",
-                        description=f'**{stream_data[1]}**',
+                        title=f"{stream_data[2]} начинает трансляцию!",
+                        description=f'**{stream_data[3]}**',
                         url=channel_url,
-                        color=Colour.from_rgb(*get_average_color(stream_data[4]))
+                        color=Colour.from_rgb(*get_average_color(stream_data[6]))
                     )
-                    embed.set_thumbnail(url=stream_data[4])
-                    embed.set_image(url=stream_data[3])
-                    embed.set_author(name=stream_data[0], icon_url=stream_data[4])
+                    embed.set_thumbnail(url=stream_data[6])
+                    embed.set_image(url=stream_data[5])
+                    embed.set_author(name=stream_data[2], icon_url=tw_icon)
                     embed.set_footer(text="Mister RIC approves!")
                     await discord_channel.send(embed=embed)
                 else:
-                    print(f'Такой стрим {stream_data[0]} уже постили на канале: {post_to_channel}')
+                    print(f'Такой стрим {stream_data[1]} уже постили на канале: {post_to_channel}')
 
         # print(f'Ожидаю тайм-аут: {int(config["global_stream_check_cd"])} с.')
         await asyncio.sleep(int(config["global_stream_check_cd"]))

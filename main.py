@@ -438,17 +438,21 @@ async def cmd_autokick(ctx, action: typing.Literal[
                 msg_id: int = int(msg.split("/")[6])
                 react_id: [int | str]
 
-                if is_unicode_emoji(react) == False and react.isdigit():
-                    if ctx.guild.get_emoji(int(react)) is not None:
+                if is_unicode_emoji(react) == False and ((react.split(":")[2])[0:-1]).isdigit():
+                    if ctx.guild.get_emoji(int((react.split(":")[2])[0:-1])) is not None:
                         # если это не юникодовый смайл, восстанавливаем числовой тип
                         react_id: int = int((react.split(":")[2])[0:-1])
                     else:
+                        print(4)
                         raise ValueError(f'{a2} не является стандартным или загруженным на сервер эмодзи')
                 else:
+                    print(5)
                     # если это всё же юникодовый смайл
                     if len(react) == 1:
+                        print(6)
                         react_id: str = a2
                     else:
+                        print(7)
                         raise ValueError(f'{a2} не является стандартным или загруженным на сервер эмодзи')
 
                 if guild_id != ctx.guild.id:
@@ -585,8 +589,8 @@ async def cmd_autokick(ctx, action: typing.Literal[
 
     elif action == "ban-instead":
         if a1 is None:
-            await hybrid_cmd_router(ctx,f'Используя `{action}` нужно указать Yes или True для включения\n'
-                                        f'или No или False для выключения')
+            await hybrid_cmd_router(ctx, f'Используя `{action}` нужно указать Yes или True для включения\n'
+                                         f'или No или False для выключения')
         else:
             value: str = a1.lower()
             try:
@@ -614,10 +618,11 @@ async def cmd_autokick(ctx, action: typing.Literal[
         if a1 is None:
             await hybrid_cmd_router(ctx, f'Используя `{action}` нужно указать ID канала или его #меншен!')
         else:
-            chpath_or_chid: [int|str] = a1
+            chpath_or_chid: [int | str] = a1
             try:
                 if chpath_or_chid.isdigit() and chpath_or_chid == 18:
-                    channel_abc: [discord.abc.GuildChannel|discord.TextChannel|None] = bot.get_channel(int(chpath_or_chid))
+                    channel_abc: [discord.abc.GuildChannel | discord.TextChannel | None] = bot.get_channel(
+                        int(chpath_or_chid))
                     # если None - канал не найден
                     if channel_abc is None:
                         raise ValueError(f'**Ошибка!**\n\nТакой канал не найден!')
@@ -629,7 +634,7 @@ async def cmd_autokick(ctx, action: typing.Literal[
                                                      f'Теперь оповещения о срабатывании ловушек будут приходить в <#{channel_abc.id}>!')
                 elif chpath_or_chid.find("<#") >= 0:
                     ch_id = (chpath_or_chid.split("#"))[1][0:-1]
-                    channel_abc: [discord.abc.GuildChannel|discord.TextChannel|None] = bot.get_channel(int(ch_id))
+                    channel_abc: [discord.abc.GuildChannel | discord.TextChannel | None] = bot.get_channel(int(ch_id))
                     # если None - канал не найден
                     if channel_abc is None:
                         raise ValueError(f'**Ошибка!**\n\nТакой канал не найден!')
@@ -643,6 +648,35 @@ async def cmd_autokick(ctx, action: typing.Literal[
                 await hybrid_cmd_router(ctx, str(e))
 
         pass
+
+    elif action == "clear-all":
+        all_traps: list = SDI.get_settings(ctx.guild.id, "autokick", "trap_channels")
+        updated_traps: list = all_traps.copy()
+
+        tasks = []
+        await hybrid_cmd_router(ctx, f'**Готово!**\n\n'
+                                     f'{len(all_traps)} ловушек удаляются вместе с реакциями.\n')
+        for trap in all_traps:
+            ch_obj = bot.get_channel(trap[0])
+            msg_obj = await ch_obj.fetch_message(trap[1])
+            msg_reactions: list = msg_obj.reactions
+
+            for this_reaction in msg_reactions:
+                if isinstance(trap[2], int) and this_reaction.is_custom_emoji() == True:
+                    # если эмодзи состоит из ID и идентичен одному из тех что в списке
+                    if trap[2] != this_reaction.emoji.id: continue
+                    tasks.append(msg_obj.clear_reaction(this_reaction))
+                    updated_traps.remove(trap)
+
+                elif trap[2] == this_reaction.emoji:
+                    # если длина сообщения не более 2-х символов и записанная реакция идентична, то это юникод-эмодзи
+                    tasks.append(msg_obj.clear_reaction(this_reaction))
+                    updated_traps.remove(trap)
+
+        SDI.set_settings(ctx.guild.id, updated_traps, "autokick", "trap_channels")
+        await asyncio.gather(*tasks)
+
+
 
 
 @bot.hybrid_command(name=CommandsNames.TOGGLE,
@@ -831,6 +865,7 @@ async def on_member_remove(member):
     await channel_abc.send(f'{CachedBans.get_formated_phrase(member.mention)}')
     print('Done')
 
+
 @bot.event
 async def on_guild_join(guild_obj):
     await asyncio.sleep(3)
@@ -924,7 +959,8 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
                         embed.set_footer(text="Mister RIC approves!")
                         await discord_channel.send(embed=embed)
                     else:
-                        print(f'Такой стрим {basic_tag_path["videoId"]} уже постили на канале: {post_to_channel}')
+                        # print(f'Такой стрим {basic_tag_path["videoId"]} уже постили на канале: {post_to_channel}')
+                        pass
 
             except Exception as e:
                 if 'runs' in str(e) or 'content' in str(e):
@@ -961,7 +997,7 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
 
             if len(stream_data) > 1:
                 if SDI.check_tw_cache(post_to_channel, stream_data[1]) != True:
-                    print(f'Обнаружен активный стрим! ID стрима: {stream_data[1]}')
+                    print(f'Обнаружен активный стрим!')
                     SDI.update_tw_cache(post_to_channel, stream_data[1])
                     discord_channel = bot.get_channel(post_to_channel)
 
@@ -977,7 +1013,8 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
                     embed.set_footer(text="Mister RIC approves!")
                     await discord_channel.send(embed=embed)
                 else:
-                    print(f'Такой стрим {stream_data[1]} уже постили на канале: {post_to_channel}')
+                    # print(f'Такой стрим {stream_data[1]} уже постили на канале: {post_to_channel}')
+                    pass
 
         # print(f'Ожидаю тайм-аут: {int(config["global_stream_check_cd"])} с.')
         await asyncio.sleep(int(config["global_stream_check_cd"]))

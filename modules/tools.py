@@ -1,3 +1,5 @@
+import asyncio
+
 import requests
 import numpy as np
 from PIL import Image
@@ -49,7 +51,6 @@ def if_dark_make_brighter(*rgb):
     return packed_rgb
 
 
-
 def is_unicode_emoji(emoji):
     try:
         codepoint = ord(emoji[0])
@@ -65,3 +66,7 @@ def is_unicode_emoji(emoji):
         return False
 
     return False
+
+
+
+

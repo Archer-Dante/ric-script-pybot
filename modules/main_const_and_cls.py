@@ -17,11 +17,18 @@ class CommandsNames:
                 f'- `/toggle (leave)` - включить/выключить оповещения о выходе человека с сервера'
                 f'*(не применяется к оповещениям о автоматически кикнутых бот-аккаунтах)*\n'
                 f'\n'
-                f'- `/stream-post-to-channel (id)` - указать куда отправлять оповещения\n'
-                f'- `/stream-add-channel (url)` - добавить канал в - список отслеживаемых\n'
-                f'- `/stream-remove-channel (url)` - удалить канал из списка отслеживаемых\n'
+                f'- `/stream-post-to-channel [id]` - указать куда отправлять оповещения\n'
+                f'- `/stream-add-channel [url]` - добавить канал в - список отслеживаемых\n'
+                f'- `/stream-remove-channel [url]` - удалить канал из списка отслеживаемых\n'
                 f'- `/toggle notify-stream` - включить/выключить оповещения о стримах\n'
-                f'- `/stream-list` - показать весь список отслеживаемых стрим-каналов\n')
+                f'- `/stream-list` - показать весь список отслеживаемых стрим-каналов\n'
+                f'\n'
+                f'- `/autokick setup-trap [message_url] [emoji]` - установить ловушку, при нажатии на которую юзера-бота кикнет\n'
+                f'- `/autokick remove-traps [message_url]` - удалить с указанного сообщения все ловушки\n'
+                f'- `/autokick required-role [id | @user_mention]` - добавить требуемую роль для срабатывания ловушки\n' 
+                f'- `/autokick notify-here [channel_id | #channel_mention]` - место, куда оповещать о авто-киках\n'
+                f'- `/autokick ban-instead [yes | no]` - включить бан вместо кика при срабатывании ловушки\n' 
+                f'- `/autokick clear-all` - удалить все реакции-ловушки с сервера, и все поставленные на них реакции\n')
 
 
 

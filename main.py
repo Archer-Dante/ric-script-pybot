@@ -422,15 +422,15 @@ async def cmd_daily(ctx):
 @discord.ext.commands.has_permissions(administrator=True)
 async def cmd_autokick(ctx, action: typing.Literal[
     "setup-trap", "remove-traps", "required-role", "ban-instead", "notify-here", "clear-all"],
-                       arg1: str = None, arg2: str = None):
+                       a1: str = None, a2: str = None):
     if action == "setup-trap":
-        if arg1 is None or arg2 is None:
+        if a1 is None or a2 is None:
             await hybrid_cmd_router(ctx,
                                     f'Используя `{action}` нужно указывать оба аргумента: ссылку на сообщение и эмодзи!')
         else:
             all_traps: list = SDI.get_settings(ctx.guild.id, "autokick", "trap_channels")
-            msg = arg1
-            react = arg2
+            msg = a1
+            react = a2
             print(type(react), react, len(react))
             try:
                 guild_id: int = int(msg.split("/")[4])
@@ -443,13 +443,13 @@ async def cmd_autokick(ctx, action: typing.Literal[
                         # если это не юникодовый смайл, восстанавливаем числовой тип
                         react_id: int = int((react.split(":")[2])[0:-1])
                     else:
-                        raise ValueError(f'{arg2} не является стандартным или загруженным на сервер эмодзи')
+                        raise ValueError(f'{a2} не является стандартным или загруженным на сервер эмодзи')
                 else:
                     # если это всё же юникодовый смайл
                     if len(react) == 1:
-                        react_id: str = arg2
+                        react_id: str = a2
                     else:
-                        raise ValueError(f'{arg2} не является стандартным или загруженным на сервер эмодзи')
+                        raise ValueError(f'{a2} не является стандартным или загруженным на сервер эмодзи')
 
                 if guild_id != ctx.guild.id:
                     raise ValueError(f"Нельзя ставить ловушки на другом сервере! Фу таким быть!")
@@ -479,12 +479,12 @@ async def cmd_autokick(ctx, action: typing.Literal[
                 await hybrid_cmd_router(ctx, str(e))
 
     elif action == "remove-traps":
-        if arg1 is None:
+        if a1 is None:
             await hybrid_cmd_router(ctx, f'**Ошибка!**\n\n'
                                          f'Используя `{action}` нужно указать ссылку на сообщение в первое поле')
         else:
             all_traps: list = SDI.get_settings(ctx.guild.id, "autokick", "trap_channels")
-            msg = arg1
+            msg = a1
             channel_id: int = int(msg.split("/")[5])
             msg_id: int = int(msg.split("/")[6])
 
@@ -521,12 +521,12 @@ async def cmd_autokick(ctx, action: typing.Literal[
         pass
 
     elif action == "required-role":
-        if arg1 is None:
+        if a1 is None:
             await hybrid_cmd_router(ctx, f'**Ошибка!**\n\n'
                                          f'Используя `{action}` нужно указать роль: ID или @упоминание роли!'
                                          f'`0` - если хотите отключить требование к роли насовсем.')
         else:
-            role_data = arg1
+            role_data = a1
             role_data_cut = role_data[3:-1]
             # print(type(role_data), "---", role_data)
 
@@ -584,11 +584,11 @@ async def cmd_autokick(ctx, action: typing.Literal[
         pass
 
     elif action == "ban-instead":
-        if arg1 is None:
+        if a1 is None:
             await hybrid_cmd_router(ctx,f'Используя `{action}` нужно указать Yes или True для включения\n'
                                         f'или No или False для выключения')
         else:
-            value: str = arg1.lower()
+            value: str = a1.lower()
             try:
                 if value == "yes" or value == "true":
                     if SDI.get_settings(ctx.guild.id, "autokick", "options", "ban_instead") == False:
@@ -608,6 +608,40 @@ async def cmd_autokick(ctx, action: typing.Literal[
                                          f"Функция бана уже отключена!")
             except ValueError as e:
                 await hybrid_cmd_router(ctx, str(e))
+        pass
+
+    elif action == "notify-here":
+        if a1 is None:
+            await hybrid_cmd_router(ctx, f'Используя `{action}` нужно указать ID канала или его #меншен!')
+        else:
+            chpath_or_chid: [int|str] = a1
+            try:
+                if chpath_or_chid.isdigit() and chpath_or_chid == 18:
+                    channel_abc: [discord.abc.GuildChannel|discord.TextChannel|None] = bot.get_channel(int(chpath_or_chid))
+                    # если None - канал не найден
+                    if channel_abc is None:
+                        raise ValueError(f'**Ошибка!**\n\nТакой канал не найден!')
+                    elif channel_abc.guild.id != ctx.guild.id:
+                        raise ValueError(f'**Ошибка!**\n\nЭтот канал принадлежит не вашей гильдии! Атата!')
+                    else:
+                        SDI.set_settings(ctx.guild.id, channel_abc.id, "autokick", "options", "channel_to_farewell")
+                        await hybrid_cmd_router(ctx, f'**Готово!**\n\n'
+                                                     f'Теперь оповещения о срабатывании ловушек будут приходить в <#{channel_abc.id}>!')
+                elif chpath_or_chid.find("<#") >= 0:
+                    ch_id = (chpath_or_chid.split("#"))[1][0:-1]
+                    channel_abc: [discord.abc.GuildChannel|discord.TextChannel|None] = bot.get_channel(int(ch_id))
+                    # если None - канал не найден
+                    if channel_abc is None:
+                        raise ValueError(f'**Ошибка!**\n\nТакой канал не найден!')
+                    elif channel_abc.guild.id != ctx.guild.id:
+                        raise ValueError(f'**Ошибка!**\n\nЭтот канал принадлежит не вашей гильдии! Атата!')
+                    else:
+                        SDI.set_settings(ctx.guild.id, channel_abc.id, "autokick", "options", "channel_to_farewell")
+                        await hybrid_cmd_router(ctx, f'**Готово!**\n\n'
+                                                     f'Теперь оповещения о срабатывании ловушек будут приходить в <#{channel_abc.id}>!')
+            except ValueError as e:
+                await hybrid_cmd_router(ctx, str(e))
+
         pass
 
 

@@ -17,9 +17,9 @@
         },
         "notify": {
                 "options": {
-                        "member_quits": "False",
-                        "stream_starts": "False",
-                        "video_published": "False"
+                        "member_quits": false,
+                        "stream_starts": false,
+                        "video_published": false
                 }
         },
         "streams": {

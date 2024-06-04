@@ -2,7 +2,7 @@ import asyncio
 import typing
 
 import discord
-from discord import app_commands, Colour
+from discord import app_commands, Colour, SyncWebhook
 from discord.app_commands import Argument, Choice
 from discord.ext import commands
 import pathlib
@@ -16,7 +16,8 @@ from modules.load_config import config  # импорт результата от
 from modules.main_const_and_cls import Bcolors  # импорт кодов цветов и форматирования для консоли
 from modules.main_const_and_cls import CachedBans  # импорт генератора сообщений
 from modules.main_const_and_cls import CommandsNames  # импорт названия команд из констант внутри класса
-from modules.tools import get_average_color, is_unicode_emoji, get_dominant_color  # получение усреднённого цвета RGB
+from modules.tools import get_average_color, is_unicode_emoji, get_dominant_color, \
+    convert_chstr_to_chint, validate_channel  # получение усреднённого цвета RGB
 
 import requests
 from bs4 import BeautifulSoup
@@ -187,10 +188,10 @@ class ServerDataInterface:
                 cfg_branch = cfg_branch[subbranch]
 
         print(f'Было: {cfg_branch[args[-1]]}, сервер {s_id}')
-        if cfg_branch[args[-1]] == "True":
-            cfg_branch[args[-1]] = "False"
+        if cfg_branch[args[-1]] == True:
+            cfg_branch[args[-1]] = False
         else:
-            cfg_branch[args[-1]] = "True"
+            cfg_branch[args[-1]] = True
         print(f'Стало: {cfg_branch[args[-1]]}, сервер {s_id}')
         print(json.dumps(cls.data[str(s_id)]["settings"], indent=8))
         cls.save_cfgs(s_id)
@@ -313,19 +314,21 @@ async def hybrid_cmd_router(ctx_or_msg, reply):
     )
     # print(type(ctx_or_msg), ctx_or_msg)
     # print(type(reply), reply)
+    msg_obj = None
     try:
         if type(ctx_or_msg) is discord.ext.commands.context.Context:
-            await ctx_or_msg.send(embed=embed)
+            msg_obj = await ctx_or_msg.send(embed=embed)
         elif type(ctx_or_msg) is discord.message.Message:
-            await ctx_or_msg.channel.send(embed=embed)
+            msg_obj = await ctx_or_msg.channel.send(embed=embed)
         elif type(ctx_or_msg) is discord.interactions.Interaction:
-            await ctx_or_msg.response.send_message(embed=embed)
+            msg_obj = await ctx_or_msg.response.send_message(embed=embed)
         elif type(ctx_or_msg) is discord.channel.TextChannel:
-            await ctx_or_msg.send(embed=embed)
+            msg_obj = await ctx_or_msg.send(embed=embed)
         else:
             raise Exception
     except Exception as e:
         print(f'Ошибка гибридной обёртки: {e}')
+    return msg_obj
 
 
 async def config_make_validate(guild_object):
@@ -342,45 +345,11 @@ async def on_ready():
     await bot.change_presence(activity=activity)
 
     guild_count = 0
-
     for guild in bot.guilds:
         await config_make_validate(guild)
         guild_count = guild_count + 1
 
     print("Бот находится в " + str(guild_count) + " гильдиях.\n")
-
-    # т.к. нельзя получить сообщение без канала, а канал или сообщение без события, то зная ID канала
-    # получаем сначала объект канала, потом объект сообщения, а потом ставим на него смайл указав ID смайла
-
-    # channel_obj = bot.get_channel(channel_id_with_message)
-    # message_obj = await channel_obj.fetch_message(message_id_to_ban)
-    # await message_obj.clear_reaction(emoji_to_work_with)
-    # try:
-    #     await message_obj.add_reaction(emoji_to_work_with)
-    # except Exception as f:
-    #     print("Ошибка: ", str(f))
-    # finally:
-    #     pass
-
-    # import urllib.request as web
-    # current_avatar = bot.user.avatar
-    # print(f'{current_avatar.key}\n{current_avatar.url}')
-    # file_url = current_avatar.url[0:current_avatar.url.find("?")]
-    # print(f'{file_url}')
-    # web.urlretrieve(file_url, current_avatar.key + ".png", progress_bar)
-
-    # import requests
-    # response = requests.get(file_url, headers=headers)
-    # if response.status_code == 200:
-    #     FileAction(f'{current_avatar.key}.png', "wb", response.content)
-    #     print(f"Аватар сохранен как {current_avatar.key}.png")
-    # else:
-    #     print(f"Ошибка при загрузке аватара: {response.status_code}")
-
-    # выгрузка аватара
-    # with open("cat.gif", "rb") as f:
-    #     new_avatar = f.read()
-    # await bot.user.edit(avatar=new_avatar)
 
     try:
         commands_list = await bot.tree.sync()
@@ -394,7 +363,7 @@ async def on_ready():
         print(f'Всего стрим-каналов на обработке: {total_stream_checks_awaits}')
         global_cd = int(config["global_stream_check_cd"]) * sum(total_stream_checks_awaits)
         if global_cd == 0:
-            print(f'Ни на одном сервере не включен постинг стримов. Отдыхаю.')
+            # print(f'Ни на одном сервере не включен постинг стримов. Отдыхаю.')
             await asyncio.sleep(120)
         else:
             await check_live_streams()
@@ -677,8 +646,6 @@ async def cmd_autokick(ctx, action: typing.Literal[
         await asyncio.gather(*tasks)
 
 
-
-
 @bot.hybrid_command(name=CommandsNames.TOGGLE,
                     description="Переключить настройку в указанное или противоположное значение")
 @commands.cooldown(1, 4, BucketType.user)
@@ -737,6 +704,109 @@ async def cmd_manage_streams(ctx, command: typing.Literal["add", "remove", "chan
             await hybrid_cmd_router(ctx, f'Теперь сообщения от стримов будут публиковаться здесь: <#{reply}>')
         except Exception:
             await hybrid_cmd_router(ctx, "ID канала должен быть числом")
+
+
+@bot.hybrid_command(name=CommandsNames.COPY, description="Перенести сообщения в указанный канал")
+@discord.ext.commands.guild_only()
+@discord.ext.commands.has_permissions(administrator=True)
+async def fetch_messages_and_copy(ctx, message_link_from, message_link_to, copy_to_channel_id):
+    await fetch_messages_and_move(ctx, message_link_from, message_link_to, copy_to_channel_id)
+
+
+@bot.hybrid_command(name=CommandsNames.MOVE, description="Перенести сообщения в указанный канал")
+@discord.ext.commands.guild_only()
+@discord.ext.commands.has_permissions(administrator=True)
+async def fetch_messages_and_move(ctx, message_link_from, message_link_to, move_to_channel_id):
+    start_msg_id: int = int(message_link_from.split("/")[-1])
+    start_msg_ch_id: int = int(message_link_from.split("/")[-2])
+    end_msg_id: int = int(message_link_to.split("/")[-1])
+    if move_to_channel_id.isdigit():
+        move_to_channel_id = int(move_to_channel_id)
+    else:
+        move_to_channel_id = convert_chstr_to_chint(move_to_channel_id)
+
+    status_msg = None
+    if await validate_channel(ctx, move_to_channel_id, bot) != True:
+        await hybrid_cmd_router(ctx, f'**Ошибка!**\n\nТакой канал не найден или не принадлежит этому серверу')
+        return
+    else:
+        if ctx.command.name == CommandsNames.MOVE:
+            status_msg = await hybrid_cmd_router(ctx, f'**Готово!**\n\n'
+                                                  f'Перенос сообщений из <#{start_msg_ch_id}> в <#{move_to_channel_id}> запущен!')
+        elif ctx.command.name == CommandsNames.COPY:
+            status_msg = await hybrid_cmd_router(ctx, f'**Готово!**\n\n'
+                                                  f'Копирование сообщений из <#{start_msg_ch_id}> в <#{move_to_channel_id}> запущено!')
+
+    # последовательный набор сообщений
+    messages_sequence: list = []
+
+    # добавляем в список первое сообщение
+    messages_sequence.append(await bot.get_channel(start_msg_ch_id).fetch_message(start_msg_id))
+
+    channel_from = discord.utils.get(bot.get_all_channels(), id=start_msg_ch_id)
+    start_message = await channel_from.fetch_message(start_msg_id)
+    end_message = await channel_from.fetch_message(end_msg_id)
+
+    # добавляем все промежуточные сообщения между первым и последним
+    async for msg in channel_from.history(after=start_message, before=end_message):
+        messages_sequence.append(msg)
+
+    # добавляем в список последнее сообщение
+    messages_sequence.append(await bot.get_channel(start_msg_ch_id).fetch_message(end_msg_id))
+
+    WEBHOOK_NAME = "RIC_webhook"
+    ch_webhook = bot.get_channel(move_to_channel_id)
+
+    webhook = discord.utils.get(await ch_webhook.webhooks(), name=WEBHOOK_NAME)
+    if webhook is None:
+        webhook = await ch_webhook.create_webhook(name=WEBHOOK_NAME)
+        # print(f"Webhook '{WEBHOOK_NAME}' created. URL: {webhook.url}")
+    else:
+        # print(f"Webhook '{WEBHOOK_NAME}' already exists. URL: {webhook.url}")
+        pass
+
+    webhook = SyncWebhook.from_url(webhook.url)  # Initializing webhook
+
+    for each_msg in messages_sequence:
+        try:
+            user_nickname = each_msg.author.display_name
+            compiled_message: str = each_msg.content
+            if each_msg.content == "":
+                compiled_message += "** **"
+            if len(each_msg.attachments) > 0:
+                for attachment in each_msg.attachments:
+                    compiled_message += attachment.url + "\n"
+            reposted_message = webhook.send(content=compiled_message,
+                                            username=user_nickname,
+                                            avatar_url=each_msg.author.avatar.url,
+                                            wait=True)
+            if len(each_msg.reactions) > 0:
+                for reaction in each_msg.reactions:
+                    try:
+                        await bot.get_channel(move_to_channel_id).get_partial_message(reposted_message.id).add_reaction(
+                            reaction.emoji)
+                    except Exception as e:
+                        print(f'Не удалось добавить реакцию {reaction.emoji} к сообщению {reposted_message.id}\n{e}')
+            if ctx.command.name == CommandsNames.MOVE:
+                await each_msg.delete()
+                await asyncio.sleep(1)
+            elif ctx.command.name == CommandsNames.COPY:
+                await asyncio.sleep(1)
+        except Exception as e:
+            print(str(e))
+            await asyncio.sleep(60)
+
+    # после всего нужно вернуть оригинальные значения вебхука
+    webhook.edit(name=WEBHOOK_NAME, avatar=None)
+
+    # Получение и изменение Embed из сообщения
+    embed = status_msg.embeds[0]
+    if ctx.command.name == CommandsNames.MOVE:
+        embed.description = f'**Готово!**\n\nПеренос завершён! ✅\nТеперь сообщения находятся на канале <#{move_to_channel_id}>'
+    elif ctx.command.name == CommandsNames.COPY:
+        embed.description = f'**Готово!**\n\nКопирование завершено! ✅\nСообщения находятся здесь <#{move_to_channel_id}>'
+
+    await status_msg.edit(embed=embed)
 
 
 @bot.event
@@ -853,7 +923,7 @@ async def on_member_remove(member):
         return
     print('Нет, он вышел сам или был кикнут вручную.')
 
-    if SDI.get_settings(member.guild.id, "notify", "options", "member_quits") != "True":
+    if SDI.get_settings(member.guild.id, "notify", "options", "member_quits") != True:
         print('Сообщения о выходах отключены')
         return
 
@@ -884,7 +954,7 @@ async def check_live_streams():
     for server_id in SDI.data.copy():
         stream_settings = SDI.get_settings(server_id, "notify", "options", "stream_starts")
         # print(f'Для сервера {ServerID} настройка равна: {stream_settings}')
-        if stream_settings == "True":
+        if stream_settings == True:
             url_list_of_channels = SDI.get_settings(server_id, "streams", "streaming_channels")
             if len(url_list_of_channels) > 0:
                 # print(f'Список каналов на проверку для сервера {server_id}: {notify_stream_channels}')

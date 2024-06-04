@@ -1,5 +1,4 @@
-import asyncio
-
+import discord
 import requests
 import numpy as np
 from PIL import Image
@@ -15,6 +14,7 @@ def get_average_color(image_url):
     average_color = np.mean(pixels, axis=(0, 1)).astype(int)
     avg_packed = (int(x) for x in average_color)
     avg_packed = list(avg_packed)
+    # print(avg_packed)
     final_color_pack = if_dark_make_brighter(*avg_packed)
     # print(final_color_pack)
     return final_color_pack
@@ -39,9 +39,9 @@ def get_dominant_color(image_url):
 
 
 def if_dark_make_brighter(*rgb):
-    too_dark = 100  # число меньше этого - слишком тёмный цвет из RGB.
+    too_dark = 80  # число меньше этого - слишком тёмный цвет из RGB.
     brightness = 10
-    saturation = 2.5
+    saturation = 2.2
     packed_rgb: tuple = (rgb[0], rgb[1], rgb[2])
     if rgb[0] <= too_dark and rgb[1] <= too_dark and rgb[2] <= too_dark:
         red = int(rgb[0] * saturation) + brightness  # Red
@@ -68,5 +68,31 @@ def is_unicode_emoji(emoji):
     return False
 
 
+def convert_chstr_to_chint(chpath_or_chid):
+    channel_id: int = 0
+    try:
+        if chpath_or_chid.isdigit() and chpath_or_chid == 18:
+            channel_id = int(chpath_or_chid)
+        elif chpath_or_chid.find("<#") >= 0:
+            channel_id = int((chpath_or_chid.split("#"))[1][0:-1])
+    except Exception as e:
+        print("Проблема конвертации канала в числовой ID")
+    return channel_id
+
+
+async def validate_channel(ctx, ch_id, bot):
+    """
+    Валидация канала.
+    :param ctx: контекстный объект сообщения или объект содержащий информацию об id гильдии
+    :param ch_id: id канала, будет проверен на то, что он существует и принадлежит текущей гильдии
+    :return: boolean - True если канал существует и принадлежит текущей
+    """
+    status = True
+    channel_abc: [discord.abc.GuildChannel | discord.TextChannel | None] = bot.get_channel(int(ch_id))
+    # print(channel_abc)
+    if channel_abc is None or ctx.guild.id != channel_abc.guild.id:
+        status = False
+    # print(status)
+    return status
 
 

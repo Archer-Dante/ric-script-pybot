@@ -9,6 +9,8 @@ class CommandsNames:
     DAILY = "daily"
     TOGGLE = "toggle"
     STREAM = "stream"
+    MOVE = "move"
+    COPY = "copy"
 
     COMMANDS = (f'**Список доступных команд:**\n'
                 f'\n'

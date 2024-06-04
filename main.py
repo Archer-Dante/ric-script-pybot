@@ -219,7 +219,7 @@ class ServerDataInterface:
         youtube_channels = 0
         twitch_channels = 0
         for server in cls.data:
-            if cls.data[server]["settings"]["notify"]["options"]["stream_starts"] == "True":
+            if cls.data[server]["settings"]["notify"]["options"]["stream_starts"] == True:
                 for link in cls.data[server]["settings"]["streams"]["streaming_channels"]:
                     if "youtube" in link:
                         # print(f'Youtube канал {link} добавлен в отслеживание для сервера {server}')

@@ -26,7 +26,8 @@
                 "options": {
                         "post_chid": 0,
                         "yt_parse_method": 1,
-                        "tw_parse_method": 1
+                        "tw_parse_method": 1,
+                        "allow-user-streams": false
                 },
                 "streaming_channels": [
                 ]

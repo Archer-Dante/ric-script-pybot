@@ -661,6 +661,11 @@ async def cmd_toggle(ctx, setting: typing.Literal["notify-leave", "notify-stream
         reply = f'Теперь настройка {setting} переключена в положение **{SDI.get_settings(ctx.guild.id, "notify", "options", "stream_starts")}**'
         await hybrid_cmd_router(ctx, reply)
         pass
+    elif setting == "allow-user-streams":
+        SDI.toggle_settings(ctx.guild.id, "streams", "options", "allow-user-stream-add")
+        reply = f'Теперь настройка {setting} переключена в положение **{SDI.get_settings(ctx.guild.id, "notify", "options", "stream_starts")}**'
+        await hybrid_cmd_router(ctx, reply)
+        pass
     else:
         await hybrid_cmd_router(ctx, "Такого параметра не существует")
     pass
@@ -704,6 +709,16 @@ async def cmd_manage_streams(ctx, command: typing.Literal["add", "remove", "chan
             await hybrid_cmd_router(ctx, f'Теперь сообщения от стримов будут публиковаться здесь: <#{reply}>')
         except Exception:
             await hybrid_cmd_router(ctx, "ID канала должен быть числом")
+
+
+@bot.hybrid_command(name=CommandsNames.ADDSTREAM, description="Добавить пользовательский стрим-канал в отслеживаемые")
+@discord.ext.commands.guild_only()
+async def cmd_add_user_stream(ctx, command: typing.Literal["add", "remove", "channel", "list"], param: str):
+    if SDI.get_settings(ctx.guild.id, "streams", "options", "allow-user-streams") == True:
+        await cmd_manage_streams(ctx, command, param)
+    else:
+        await hybrid_cmd_router(ctx, "Пользовательские стрим-каналы отключены")
+
 
 
 @bot.hybrid_command(name=CommandsNames.COPY, description="Перенести сообщения в указанный канал")

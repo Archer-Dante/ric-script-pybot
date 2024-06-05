@@ -651,7 +651,7 @@ async def cmd_autokick(ctx, action: typing.Literal[
 @commands.cooldown(1, 4, BucketType.user)
 @discord.ext.commands.guild_only()
 @discord.ext.commands.has_permissions(administrator=True)
-async def cmd_toggle(ctx, setting: typing.Literal["notify-leave", "notify-stream"]):
+async def cmd_toggle(ctx, setting: typing.Literal["notify-leave", "notify-stream", "allow-user-streams"]):
     if setting == "notify-leave":
         SDI.toggle_settings(ctx.guild.id, "notify", "options", "member_quits")
         reply = f'Теперь настройка {setting} переключена в положение **{SDI.get_settings(ctx.guild.id, "notify", "options", "member_quits")}**'

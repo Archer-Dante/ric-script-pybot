@@ -713,7 +713,7 @@ async def cmd_manage_streams(ctx, command: typing.Literal["add", "remove", "chan
 
 @bot.hybrid_command(name=CommandsNames.ADDSTREAM, description="Добавить пользовательский стрим-канал в отслеживаемые")
 @discord.ext.commands.guild_only()
-async def cmd_add_user_stream(ctx, command: typing.Literal["add", "remove", "channel", "list"], param: str):
+async def cmd_add_user_stream(ctx, command: typing.Literal["add"], param: str):
     if SDI.get_settings(ctx.guild.id, "streams", "options", "allow-user-streams") == True:
         await cmd_manage_streams(ctx, command, param)
     else:

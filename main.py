@@ -720,7 +720,6 @@ async def cmd_add_user_stream(ctx, command: typing.Literal["add"], param: str):
         await hybrid_cmd_router(ctx, "Пользовательские стрим-каналы отключены")
 
 
-
 @bot.hybrid_command(name=CommandsNames.COPY, description="Перенести сообщения в указанный канал")
 @discord.ext.commands.guild_only()
 @discord.ext.commands.has_permissions(administrator=True)
@@ -821,6 +820,50 @@ async def fetch_messages_and_move(ctx, message_link_from, message_link_to, move_
     elif ctx.command.name == CommandsNames.COPY:
         embed.description = f'**Готово!**\n\nКопирование завершено! ✅\nСообщения находятся здесь <#{move_to_channel_id}>'
 
+    await status_msg.edit(embed=embed)
+
+
+@bot.hybrid_command(name=CommandsNames.CLEAR, description="Удалить сообщения из указанного диапазона сообщений")
+@discord.ext.commands.guild_only()
+@discord.ext.commands.has_permissions(administrator=True)
+async def fetch_messages_and_move(ctx, del_from, del_to):
+    start_msg_id: int = int(del_from.split("/")[-1])
+    start_msg_ch_id: int = int(del_from.split("/")[-2])
+    end_msg_id: int = int(del_to.split("/")[-1])
+
+    status_msg = None
+    if await validate_channel(ctx, start_msg_ch_id, bot) != True:
+        await hybrid_cmd_router(ctx, f'**Ошибка!**\n\nТакой канал не найден или не принадлежит этому серверу')
+        return
+    else:
+        status_msg = await hybrid_cmd_router(ctx, f'**Ожидайте!**\n\n'
+                                                  f'Запущен процесс удаления сообщений...')
+
+    # последовательный набор сообщений + добавляем в список первое сообщение
+    messages_sequence: list = [await bot.get_channel(start_msg_ch_id).fetch_message(start_msg_id)]
+
+    channel_from = discord.utils.get(bot.get_all_channels(), id=start_msg_ch_id)
+    start_message = await channel_from.fetch_message(start_msg_id)
+    end_message = await channel_from.fetch_message(end_msg_id)
+
+    # добавляем все промежуточные сообщения между первым и последним
+    async for msg in channel_from.history(after=start_message, before=end_message):
+        messages_sequence.append(msg)
+
+    # добавляем в список последнее сообщение
+    messages_sequence.append(await bot.get_channel(start_msg_ch_id).fetch_message(end_msg_id))
+
+    for each_msg in messages_sequence:
+        try:
+            await each_msg.delete()
+            await asyncio.sleep(1)
+        except Exception as e:
+            print(str(e))
+            await asyncio.sleep(60)
+
+    # Получение и изменение Embed из сообщения
+    embed = status_msg.embeds[0]
+    embed.description = f'**Готово!**\n\nУдаление завершено ✅\n'
     await status_msg.edit(embed=embed)
 
 

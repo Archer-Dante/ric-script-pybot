@@ -12,6 +12,7 @@ class CommandsNames:
     MOVE = "move"
     COPY = "copy"
     ADDSTREAM = "addstream"
+    CLEAR = "clear"
 
     COMMANDS = (f'**Список доступных команд:**\n'
                 f'\n'

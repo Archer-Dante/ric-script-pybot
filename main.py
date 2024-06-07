@@ -2,16 +2,18 @@ import asyncio
 import typing
 
 import discord
-from discord import app_commands, Colour, SyncWebhook
+from discord import app_commands, Colour, SyncWebhook, MessageReference
 from discord.app_commands import Argument, Choice
 from discord.ext import commands
 import pathlib
 import os
 import json
-from discord.ext.commands import BucketType
+from discord.ext.commands import BucketType, Context
+from discord.ext.commands.view import StringView
 from dotenv import load_dotenv
 from datetime import datetime
 from modules.file_manager import FileAction  # импорт своего класса по работе с файлами
+from modules.lang_traslation import translate, CodeFlagConverter
 from modules.load_config import config  # импорт результата отдельной загрузки для главного конфига
 from modules.main_const_and_cls import Bcolors  # импорт кодов цветов и форматирования для консоли
 from modules.main_const_and_cls import CachedBans  # импорт генератора сообщений
@@ -33,6 +35,7 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 # юзерагент для запросов
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
                          'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'}
+# headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0'}
 
 bot = commands.Bot(command_prefix="рик", intents=discord.Intents.all())
 
@@ -114,6 +117,49 @@ class ServerDataInterface:
             else:  # просто расширяем путь дальше и вглубь вложений
                 cfg_branch = cfg_branch[subbranch]
                 # print(cfg_branch)
+        cls.save_cfgs(s_id)
+
+    @classmethod
+    def get_userdata(cls, s_id, u_id, *args):
+        try:
+            cfg_branch = cls.data[str(s_id)]["users"][str(u_id)]
+        except Exception:
+            print(f'Данные пользователя {u_id} не найдены, создаю по шаблону')
+            cls.create_userdata_from_template(s_id, u_id)
+            print(f'Успех!')
+            cfg_branch = cls.data[str(s_id)]["users"][str(u_id)]
+            cls.save_cfgs(s_id)
+        for value in args:
+            if value in cfg_branch:
+                # print(cfg_branch[str(value)])
+                cfg_branch = cfg_branch[value]
+            else:
+                # print(f'Значение {value} не найдено в {cfg_branch}')
+                pass
+        return cfg_branch
+
+    @classmethod
+    def set_userdata(cls, s_id, u_id, changing_value, *args):
+        try:
+            cfg_branch = cls.data[str(s_id)]["users"][str(u_id)]
+        except Exception:
+            print(f'Данные пользователя {u_id} не найдены, создаю по шаблону')
+            cls.create_userdata_from_template(s_id, u_id)
+            print(f'Успех!')
+            cfg_branch = cls.data[str(s_id)]["users"][str(u_id)]
+        for subbranch in args:
+            if subbranch == args[-1]:  # последний элемент
+                cfg_branch[subbranch] = changing_value
+                # print(cfg_branch[subbranch])
+            else:  # просто расширяем путь дальше и вглубь вложений
+                cfg_branch = cfg_branch[subbranch]
+                # print(cfg_branch)
+        cls.save_cfgs(s_id)
+
+    @classmethod
+    def create_userdata_from_template(cls, s_id, u_id):
+        user_template = cls.data[str(s_id)]["users"][str(0)]
+        cls.data[str(s_id)]["users"][str(u_id)] = user_template
         cls.save_cfgs(s_id)
 
     @classmethod
@@ -305,13 +351,16 @@ class ServerDataInterface:
 
 
 SDI = ServerDataInterface  # сокращённый вариант
+country_flags = CodeFlagConverter()
 
 
-async def hybrid_cmd_router(ctx_or_msg, reply):
+async def hybrid_cmd_router(ctx_or_msg, reply, ephemeral=None):
     embed = discord.Embed(
         description=reply,
         color=0xAC0000
     )
+    if ephemeral is None:
+        ephemeral = False
     # print(type(ctx_or_msg), ctx_or_msg)
     # print(type(reply), reply)
     msg_obj = None
@@ -321,7 +370,7 @@ async def hybrid_cmd_router(ctx_or_msg, reply):
         elif type(ctx_or_msg) is discord.message.Message:
             msg_obj = await ctx_or_msg.channel.send(embed=embed)
         elif type(ctx_or_msg) is discord.interactions.Interaction:
-            msg_obj = await ctx_or_msg.response.send_message(embed=embed)
+            msg_obj = await ctx_or_msg.response.send_message(embed=embed, ephemeral=ephemeral)
         elif type(ctx_or_msg) is discord.channel.TextChannel:
             msg_obj = await ctx_or_msg.send(embed=embed)
         else:
@@ -746,10 +795,10 @@ async def fetch_messages_and_move(ctx, message_link_from, message_link_to, move_
     else:
         if ctx.command.name == CommandsNames.MOVE:
             status_msg = await hybrid_cmd_router(ctx, f'**Готово!**\n\n'
-                                                  f'Перенос сообщений из <#{start_msg_ch_id}> в <#{move_to_channel_id}> запущен!')
+                                                      f'Перенос сообщений из <#{start_msg_ch_id}> в <#{move_to_channel_id}> запущен!')
         elif ctx.command.name == CommandsNames.COPY:
             status_msg = await hybrid_cmd_router(ctx, f'**Готово!**\n\n'
-                                                  f'Копирование сообщений из <#{start_msg_ch_id}> в <#{move_to_channel_id}> запущено!')
+                                                      f'Копирование сообщений из <#{start_msg_ch_id}> в <#{move_to_channel_id}> запущено!')
 
     # последовательный набор сообщений
     messages_sequence: list = []
@@ -803,9 +852,9 @@ async def fetch_messages_and_move(ctx, message_link_from, message_link_to, move_
                         print(f'Не удалось добавить реакцию {reaction.emoji} к сообщению {reposted_message.id}\n{e}')
             if ctx.command.name == CommandsNames.MOVE:
                 await each_msg.delete()
-                await asyncio.sleep(1)
+                await asyncio.sleep(5)
             elif ctx.command.name == CommandsNames.COPY:
-                await asyncio.sleep(1)
+                await asyncio.sleep(5)
         except Exception as e:
             print(str(e))
             await asyncio.sleep(60)
@@ -830,7 +879,6 @@ async def fetch_messages_and_move(ctx, del_from, del_to):
     start_msg_id: int = int(del_from.split("/")[-1])
     start_msg_ch_id: int = int(del_from.split("/")[-2])
     end_msg_id: int = int(del_to.split("/")[-1])
-
     status_msg = None
     if await validate_channel(ctx, start_msg_ch_id, bot) != True:
         await hybrid_cmd_router(ctx, f'**Ошибка!**\n\nТакой канал не найден или не принадлежит этому серверу')
@@ -838,33 +886,121 @@ async def fetch_messages_and_move(ctx, del_from, del_to):
     else:
         status_msg = await hybrid_cmd_router(ctx, f'**Ожидайте!**\n\n'
                                                   f'Запущен процесс удаления сообщений...')
+    # Получение Embed из сообщения, чтобы в дальнейшем его править
+    embed = status_msg.embeds[0]
 
     # последовательный набор сообщений + добавляем в список первое сообщение
     messages_sequence: list = [await bot.get_channel(start_msg_ch_id).fetch_message(start_msg_id)]
 
     channel_from = discord.utils.get(bot.get_all_channels(), id=start_msg_ch_id)
-    start_message = await channel_from.fetch_message(start_msg_id)
-    end_message = await channel_from.fetch_message(end_msg_id)
+    start_message: [discord.Message | None] = None
+    end_message: [discord.Message | None] = None
 
-    # добавляем все промежуточные сообщения между первым и последним
-    async for msg in channel_from.history(after=start_message, before=end_message):
-        messages_sequence.append(msg)
+    try:
+        start_message = await channel_from.fetch_message(start_msg_id)
+    except Exception as e:
+        print(e)
+        # меняем Embed описание из сообщения, равно содержание сообщения
+        embed.description = f'**Ошибка!**\n\nУдаление не завершено ❌\nСтартового сообщения не существует!'
+        await status_msg.edit(embed=embed)
+        return
+
+    try:
+        end_message = await channel_from.fetch_message(end_msg_id)
+    except Exception as e:
+        print(e)
+        # меняем Embed описание из сообщения, равно содержание сообщения
+        embed.description = f'**Ошибка!**\n\nУдаление не завершено ❌\nКонечного сообщения не существует!'
+        await status_msg.edit(embed=embed)
+        return
+
+    async for msg in channel_from.history(after=start_message, before=end_message, limit=6666):
+        # добавляем все промежуточные сообщения между первым и последним
+        try:
+            messages_sequence.append(msg)
+        except Exception as e:
+            print(str(e))
 
     # добавляем в список последнее сообщение
     messages_sequence.append(await bot.get_channel(start_msg_ch_id).fetch_message(end_msg_id))
 
+    total_messages: int = 0
+    errors_count: int = 0
     for each_msg in messages_sequence:
         try:
             await each_msg.delete()
+            total_messages += 1
+            print(f'{total_messages}/{len(messages_sequence)} | Сообщение удалено: {each_msg.id} - {each_msg.content}')
             await asyncio.sleep(1)
         except Exception as e:
-            print(str(e))
-            await asyncio.sleep(60)
+            print(f'Ошибка удаления сообщения: {str(e)}\nДанные сообщения: {each_msg}')
+            errors_count += 1
+            if errors_count < 10:
+                await asyncio.sleep(30)
+            else:
+                embed.description = (f'**Остановлено!!**\n\n'
+                                     f'Всего удалено: {total_messages} сообщений\n'
+                                     f'Возможно слишком много сообщений отсутствует или Discord ограничивает запросы ⚠️\n'
+                                     f'Попробуйте снова.')
+                await status_msg.edit(embed=embed)
 
-    # Получение и изменение Embed из сообщения
-    embed = status_msg.embeds[0]
-    embed.description = f'**Готово!**\n\nУдаление завершено ✅\n'
+
+    embed.description = f'**Готово!**\n\nУдаление завершено ✅\nВсего удалено: {total_messages} сообщений'
     await status_msg.edit(embed=embed)
+
+
+
+@bot.hybrid_command(name=CommandsNames.LANG, description="Change translation language")
+@discord.ext.commands.guild_only()
+async def setup_language(ctx, option: typing.Literal["ru", "en", "pl", "pt"]):
+    lang = str(option)
+    SDI.set_userdata(ctx.guild.id, ctx.author.id, str(option), "language", "code")
+    flag_icon = country_flags.get_flag(lang)
+    reply = await translate("Язык успешно изменён на", "yandex", lang)
+    await hybrid_cmd_router(ctx, f'✅ Done!\n\n{reply} {flag_icon}')
+    pass
+
+
+@app_commands.context_menu(name="Translate it")
+async def context_cmd_translateit(interaction: discord.Interaction, message: discord.Message):
+    # SDI.create_userdata_from_template(message.guild.id, interaction.user.id)
+    lang = SDI.get_userdata(message.guild.id, interaction.user.id, "language", "code")
+    flag_icon = country_flags.get_flag(lang)
+    reply = await translate(message.content, "yandex", lang)
+    await interaction.response.send_message(f'{flag_icon} | {reply}', ephemeral=True)
+    pass
+bot.tree.add_command(context_cmd_translateit)
+
+
+
+# @bot.hybrid_command(name=CommandsNames.TRANSLATE, description="Перевести сообщение на другой язык")
+# @discord.ext.commands.guild_only()
+# async def cmd_do_translate(ctx, lang: str = None, text: str = None,
+#                            service: typing.Literal["yandex", "google", "bing", "deepl", "reverso"] = "yandex"):
+#
+#     # user_preferd_language = SDI.get_settings(ctx.guild.id, "translator", "options")
+#
+#     referenced_message = None
+#     if ctx.message.reference and text is None:
+#         referenced_message = await ctx.message.channel.fetch_message(ctx.message.reference.message_id)
+#         text = referenced_message.content
+#
+#     if service is None:
+#         service = SDI.get_settings(ctx.guild.id, "translator", "options", "default_translator")
+#
+#     if lang is None:
+#         lang = SDI.get_settings(ctx.guild.id, "translator", "options", "default_lang")
+#
+#     reply = await translate(message=text, translator=service, lang=lang)
+#
+#     if referenced_message is not None:
+#         await referenced_message.reply(reply)
+#     elif text is not None:
+#         await ctx.send(ctx, "hello")
+#     else:
+#         await hybrid_cmd_router(ctx, f'**Ошибка!**\n\nНе указано что переводить')
+#
+#     pass
 
 
 @bot.event
@@ -872,6 +1008,9 @@ async def on_message(message):
     if message.author.bot: return
     prefix = SDI.get_settings(message.guild.id, "prefix")
     if message.content.startswith(f'{prefix}{CommandsNames.BOTS_KICKED}'): await cmd_bots_kicked(message)
+    if message.content.lower().startswith("tt"):
+        ctx = Context(bot=bot, message=message, view=StringView(message.content))
+        await cmd_do_translate(ctx)
 
 
 @bot.event

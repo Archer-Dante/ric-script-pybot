@@ -2,5 +2,6 @@
         "autokick_count": 0,
         "test_param": "666",
         "joined_on_server": "1222-12-12",
-        "total_members": "123"
+        "total_members": "123",
+        "total_dailies_on_server": 0
 }

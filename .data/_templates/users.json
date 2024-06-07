@@ -1,12 +1,41 @@
 {
-        "user_global_id": [
-                "global_nickname",
-                {
-                        "date_joined": "1231-23-12",
-                        "birthday": "1990-07-21",
-                        "last_message_date": "1000-10-10",
-                        "money": 5123,
-                        "reputaion": 666
+        "0": {
+                "date_joined": 0,
+                "birthday_date": 0,
+                "last_message": 0,
+                "last_voice_join": 0,
+                "language": {
+                        "code": "en",
+                        "translator": "yandex"
+                },
+                "leveling": {
+                        "current_lvl": 0,
+                        "current_xp": 0,
+                        "voice_lvl": 0,
+                        "voice_xp": 0
+                },
+                "social": {
+                        "reputaion": 666,
+                        "rating": 0,
+                        "warnings": 0
+                },
+                "economy": {
+                        "money": 0,
+                        "daily_streak": 0,
+                        "total_dailies": 0,
+                        "crypto": [
+                        ],
+                        "stocks": [
+                        ]
+                },
+                 "statistics": {
+                        "messages":[
+                                ["channel_id", "total_messages"]
+                        ],
+                        "voice_time": 0,
+                        "behaviour_temp": 0,
+                        "nicknames": ["if someone changes nickname it records here"]
                 }
-        ]
+
+        }
 }

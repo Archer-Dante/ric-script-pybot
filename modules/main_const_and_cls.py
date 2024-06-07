@@ -13,6 +13,8 @@ class CommandsNames:
     COPY = "copy"
     ADDSTREAM = "addstream"
     CLEAR = "clear"
+    TRANSLATE = "tt"
+    LANG = "lang"
 
     COMMANDS = (f'**Список доступных команд:**\n'
                 f'\n'

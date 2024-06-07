@@ -1,5 +1,6 @@
 {
         "prefix": "!!",
+        "cfg_version": 0,
         "premium": {
                 "voucher": "code_of_voucher",
                 "till_date": "1999-99-99"
@@ -30,6 +31,58 @@
                         "allow-user-streams": false
                 },
                 "streaming_channels": [
+                ]
+        },
+        "translator": {
+                "options": {
+                                "default_lang": "en",
+                                "opposite_lang": "ru",
+                                "default_translator": "yandex",
+                                "simulate_user": false,
+                                "atc_translate_directions": 2
+                },
+                        "auto_translate_channels": [
+                        ]
+        },
+        "economy": {
+                 "daily": {
+                                "daily_profit": 400,
+                                "streak_bonus": 100,
+                                "max_streaks": 5
+                 },
+                 "crypto": [
+                                ["bitcoin", "amount bought", "price when bought"],
+                                ["notcoin", 0, 0],
+                                ["dogecoin", 0, 0],
+                                ["lightcoin", 0, 0],
+                                ["ethereum", 0, 0],
+                                ["toncoin", 0, 0],
+                                ["sand", 0, 0],
+                                ["bnb", 0, 0],
+                                ["solana", 0, 0],
+                                ["xrp", 0, 0],
+                                ["shibainu", 0, 0],
+                                ["tron", 0, 0],
+                                ["polkadot", 0, 0]
+                        ],
+                "stocks": [
+                                ["Little Fighter Forever Corp", "amount bought", "price when bought"],
+                                ["DS lovely pants Shop", 0, 0],
+                                ["Marty Wong NFTs", 0, 0],
+                                ["Green Energy Fund: Lion Forest", 0, 0],
+                                ["The Party of China Fund: The Great Wall", 0, 0],
+                                ["Gachimuchi LTD", 0, 0],
+                                ["Yaoi Industries", 0, 0],
+                                ["RIC Script Domination Company", 0, 0],
+                                ["CUHK Brains Fund", 0, 0],
+                                ["Tai Home Village Brown Filter Club", 0, 0],
+                                ["Julian1 War Tanks Factory", 0, 0],
+                                ["Stanley Prison Fund", 0, 0],
+                                ["Night Riders Rock Band Shop", 0, 0],
+                                ["Diamond Mineshaft of Steeve INC", 0, 0],
+                                ["Emerald Mineshaft of Alex INC", 0, 0],
+                                ["Change of Plans - Creeper Fund", 0, 0],
+                                ["Lee on Road - Asphalt Pavers Factory", 0, 0]
                 ]
         }
 }

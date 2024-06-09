@@ -206,13 +206,10 @@ class ServerDataInterface:
 
     @classmethod
     def save_cfgs(cls, s_id):
-        # print(cls.data)
-        # print(cls.data[str(s_id)])
         for cfg in cls.data[str(s_id)]:
             save_path = os.path.join(config["server_data_path"], str(s_id), cfg)
             with FileAction(f'{save_path}.json', "w", encoding='utf-8') as json_file:
                 try:
-                    # cls.autokick_toggle(cls, s_id)
                     json.dump(cls.data[str(s_id)][cfg], json_file, indent=8, ensure_ascii=False)
                 except Exception as e:
                     print(f"Ошибка: {e}")
@@ -550,7 +547,6 @@ async def cmd_autokick(ctx, action: typing.Literal[
         else:
             role_data = a1
             role_data_cut = role_data[3:-1]
-            # print(type(role_data), "---", role_data)
 
             try:
                 if role_data.isdigit():
@@ -963,7 +959,6 @@ async def setup_language(ctx, option: typing.Literal["ru", "en", "pl", "pt"]):
 
 @app_commands.context_menu(name="Translate it")
 async def context_cmd_translateit(interaction: discord.Interaction, message: discord.Message):
-    # SDI.create_userdata_from_template(message.guild.id, interaction.user.id)
     lang = SDI.get_userdata(message.guild.id, interaction.user.id, "language", "code")
     flag_icon = country_flags.get_flag(lang)
     reply = await translate(message.content, "yandex", lang)
@@ -1034,16 +1029,16 @@ async def on_raw_reaction_add(reaction):  # должно работать даж
     message_bdy = message_id.content
     time_string = f'{datetime.now().date().strftime("%d-%m-%Y")} - {datetime.now().time().strftime("%H:%M:%S")}'
 
-    # print(
-    #     f'{Bcolors.BOLD}Timestamp:{Bcolors.ENDC} {Bcolors.OKGREEN}{time_string}{Bcolors.ENDC}\n'
-    #     f'{Bcolors.BOLD}ID Сервера:{Bcolors.ENDC} "{await bot.fetch_guild(reaction.guild_id)}" - {reaction.guild_id}\n'
-    #     f'{Bcolors.BOLD}ID Сообщения:{Bcolors.ENDC} {reaction.message_id}\n'
-    #     f'{Bcolors.BOLD}Эмодзи:{Bcolors.ENDC} <:{reaction.emoji.name}:{reaction.emoji.id}> \n'
-    #     f'{Bcolors.BOLD}ID Юзера:{Bcolors.ENDC} {reaction.user_id} под ником {reaction.member.display_name} ({reaction.member.name})\n'
-    #     f'{Bcolors.BOLD}Ссылка на сообщение:{Bcolors.ENDC}\n'
-    #     f'https://discord.com/channels/{reaction.guild_id}/{reaction.channel_id}/{reaction.message_id}\n'
-    #     f'{Bcolors.BOLD}Тело сообщения:{Bcolors.ENDC}\n{Bcolors.OKCYAN}{message_bdy}{Bcolors.ENDC}\n'
-    #     f'{Bcolors.BOLD}Автор сообщения: {Bcolors.ENDC}{message_id.author.display_name} ({message_id.author.global_name})')
+    print(
+        f'{Bcolors.BOLD}Timestamp:{Bcolors.ENDC} {Bcolors.OKGREEN}{time_string}{Bcolors.ENDC}\n'
+        f'{Bcolors.BOLD}ID Сервера:{Bcolors.ENDC} "{await bot.fetch_guild(reaction.guild_id)}" - {reaction.guild_id}\n'
+        f'{Bcolors.BOLD}ID Сообщения:{Bcolors.ENDC} {reaction.message_id}\n'
+        f'{Bcolors.BOLD}Эмодзи:{Bcolors.ENDC} <:{reaction.emoji.name}:{reaction.emoji.id}> \n'
+        f'{Bcolors.BOLD}ID Юзера:{Bcolors.ENDC} {reaction.user_id} под ником {reaction.member.display_name} ({reaction.member.name})\n'
+        f'{Bcolors.BOLD}Ссылка на сообщение:{Bcolors.ENDC}\n'
+        f'https://discord.com/channels/{reaction.guild_id}/{reaction.channel_id}/{reaction.message_id}\n'
+        f'{Bcolors.BOLD}Тело сообщения:{Bcolors.ENDC}\n{Bcolors.OKCYAN}{message_bdy}{Bcolors.ENDC}\n'
+        f'{Bcolors.BOLD}Автор сообщения: {Bcolors.ENDC}{message_id.author.display_name} ({message_id.author.global_name})')
 
     required_role_id: int = SDI.get_settings(reaction.guild_id, "autokick", "options", "required_role_id")
     trap_channels: list = SDI.get_settings(reaction.guild_id, "autokick", "trap_channels")
@@ -1182,9 +1177,6 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
                 json_end = script_content.rfind('}') + 1
                 json_data = script_content[json_start:json_end]
                 ytInitialData = json.loads(json_data)
-
-                # with open("html_file.txt", 'w', encoding='utf-8') as file:
-                #    file.write(json.dumps(ytInitialData, indent=4))
 
                 # 0 - Главная
                 # 1 - Видео

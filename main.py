@@ -1204,7 +1204,6 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
                         thumbnail_url = thumbnail[0: thumbnail.find("?")]
                         avatar_url = (
                             ytInitialData["metadata"]["channelMetadataRenderer"]["avatar"]["thumbnails"][0]["url"])
-                        # print(avatar_url)
 
                         embed = discord.Embed(
                             title=f"{channel_name} начинает трансляцию!",

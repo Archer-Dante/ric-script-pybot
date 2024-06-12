@@ -768,14 +768,14 @@ async def cmd_add_user_stream(ctx, command: typing.Literal["add"], param: str):
 @bot.hybrid_command(name=CommandsNames.COPY, description="Перенести сообщения в указанный канал")
 @discord.ext.commands.guild_only()
 @discord.ext.commands.has_permissions(administrator=True)
-async def fetch_messages_and_copy(ctx, message_link_from, message_link_to, copy_to_channel_id):
-    await fetch_messages_and_move(ctx, message_link_from, message_link_to, copy_to_channel_id)
+async def cmd_copy(ctx, message_link_from, message_link_to, copy_to_channel_id):
+    await cmd_move(ctx, message_link_from, message_link_to, copy_to_channel_id)
 
 
 @bot.hybrid_command(name=CommandsNames.MOVE, description="Перенести сообщения в указанный канал")
 @discord.ext.commands.guild_only()
 @discord.ext.commands.has_permissions(administrator=True)
-async def fetch_messages_and_move(ctx, message_link_from, message_link_to, move_to_channel_id):
+async def cmd_move(ctx, message_link_from, message_link_to, move_to_channel_id):
     start_msg_id: int = int(message_link_from.split("/")[-1])
     start_msg_ch_id: int = int(message_link_from.split("/")[-2])
     end_msg_id: int = int(message_link_to.split("/")[-1])
@@ -807,7 +807,7 @@ async def fetch_messages_and_move(ctx, message_link_from, message_link_to, move_
     end_message = await channel_from.fetch_message(end_msg_id)
 
     # добавляем все промежуточные сообщения между первым и последним
-    async for msg in channel_from.history(after=start_message, before=end_message):
+    async for msg in channel_from.history(after=start_message, before=end_message, limit=6666):
         messages_sequence.append(msg)
 
     # добавляем в список последнее сообщение
@@ -871,7 +871,7 @@ async def fetch_messages_and_move(ctx, message_link_from, message_link_to, move_
 @bot.hybrid_command(name=CommandsNames.CLEAR, description="Удалить сообщения из указанного диапазона сообщений")
 @discord.ext.commands.guild_only()
 @discord.ext.commands.has_permissions(administrator=True)
-async def fetch_messages_and_move(ctx, del_from, del_to):
+async def cmd_clear(ctx, del_from, del_to):
     start_msg_id: int = int(del_from.split("/")[-1])
     start_msg_ch_id: int = int(del_from.split("/")[-2])
     end_msg_id: int = int(del_to.split("/")[-1])

@@ -796,15 +796,39 @@ async def cmd_move(ctx, message_link_from, message_link_to, move_to_channel_id):
             status_msg = await hybrid_cmd_router(ctx, f'**Готово!**\n\n'
                                                       f'Копирование сообщений из <#{start_msg_ch_id}> в <#{move_to_channel_id}> запущено!')
 
-    # последовательный набор сообщений
-    messages_sequence: list = []
-
-    # добавляем в список первое сообщение
-    messages_sequence.append(await bot.get_channel(start_msg_ch_id).fetch_message(start_msg_id))
+    # Получение Embed из сообщения, чтобы в дальнейшем его править
+    embed = status_msg.embeds[0]
 
     channel_from = discord.utils.get(bot.get_all_channels(), id=start_msg_ch_id)
-    start_message = await channel_from.fetch_message(start_msg_id)
-    end_message = await channel_from.fetch_message(end_msg_id)
+    start_message: [discord.Message | None] = None
+    end_message: [discord.Message | None] = None
+
+    try:
+        start_message = await channel_from.fetch_message(start_msg_id)
+    except Exception as e:
+        print(e)
+        # меняем Embed описание из сообщения, равно содержание сообщения
+        if ctx.command.name == CommandsNames.MOVE:
+            embed.description = f'**Ошибка!**\n\nПеренос не завершён ❌\nСтартового сообщения не существует!'
+        elif ctx.command.name == CommandsNames.COPY:
+            embed.description = f'**Ошибка!**\n\nКопирование не завершено ❌\nСтартового сообщения не существует!'
+        await status_msg.edit(embed=embed)
+        return
+
+    try:
+        end_message = await channel_from.fetch_message(end_msg_id)
+    except Exception as e:
+        print(e)
+        # меняем Embed описание из сообщения, равно содержание сообщения
+        if ctx.command.name == CommandsNames.MOVE:
+            embed.description = f'**Ошибка!**\n\nПеренос не завершён ❌\nКонечного сообщения не существует!'
+        elif ctx.command.name == CommandsNames.COPY:
+            embed.description = f'**Ошибка!**\n\nКопирование не завершено ❌\nКонечного сообщения не существует!'
+        await status_msg.edit(embed=embed)
+        return
+
+    # последовательный набор сообщений + добавляем в список первое сообщение
+    messages_sequence: list = [await bot.get_channel(start_msg_ch_id).fetch_message(start_msg_id)]
 
     # добавляем все промежуточные сообщения между первым и последним
     async for msg in channel_from.history(after=start_message, before=end_message, limit=6666):
@@ -885,9 +909,6 @@ async def cmd_clear(ctx, del_from, del_to):
     # Получение Embed из сообщения, чтобы в дальнейшем его править
     embed = status_msg.embeds[0]
 
-    # последовательный набор сообщений + добавляем в список первое сообщение
-    messages_sequence: list = [await bot.get_channel(start_msg_ch_id).fetch_message(start_msg_id)]
-
     channel_from = discord.utils.get(bot.get_all_channels(), id=start_msg_ch_id)
     start_message: [discord.Message | None] = None
     end_message: [discord.Message | None] = None
@@ -909,6 +930,9 @@ async def cmd_clear(ctx, del_from, del_to):
         embed.description = f'**Ошибка!**\n\nУдаление не завершено ❌\nКонечного сообщения не существует!'
         await status_msg.edit(embed=embed)
         return
+
+    # последовательный набор сообщений + добавляем в список первое сообщение
+    messages_sequence: list = [await bot.get_channel(start_msg_ch_id).fetch_message(start_msg_id)]
 
     async for msg in channel_from.history(after=start_message, before=end_message, limit=6666):
         # добавляем все промежуточные сообщения между первым и последним

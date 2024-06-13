@@ -776,9 +776,18 @@ async def cmd_copy(ctx, message_link_from, message_link_to, copy_to_channel_id):
 @discord.ext.commands.guild_only()
 @discord.ext.commands.has_permissions(administrator=True)
 async def cmd_move(ctx, message_link_from, message_link_to, move_to_channel_id):
-    start_msg_id: int = int(message_link_from.split("/")[-1])
-    start_msg_ch_id: int = int(message_link_from.split("/")[-2])
-    end_msg_id: int = int(message_link_to.split("/")[-1])
+    try:
+        start_msg_id: int = int(message_link_from.split("/")[-1])
+        start_msg_ch_id: int = int(message_link_from.split("/")[-2])
+    except Exception:
+        await hybrid_cmd_router(ctx, f'**Ошибка!**\n\nВ качестве первого аргумента необходимо указать ссылку на сообщение! ⚠️')
+        return
+    try:
+        end_msg_id: int = int(message_link_to.split("/")[-1])
+    except Exception:
+        await hybrid_cmd_router(ctx, f'**Ошибка!**\n\nВ качестве второго аргумента необходимо указать ссылку на сообщение! ⚠️')
+        return
+
     if move_to_channel_id.isdigit():
         move_to_channel_id = int(move_to_channel_id)
     else:
@@ -896,9 +905,18 @@ async def cmd_move(ctx, message_link_from, message_link_to, move_to_channel_id):
 @discord.ext.commands.guild_only()
 @discord.ext.commands.has_permissions(administrator=True)
 async def cmd_clear(ctx, del_from, del_to):
-    start_msg_id: int = int(del_from.split("/")[-1])
-    start_msg_ch_id: int = int(del_from.split("/")[-2])
-    end_msg_id: int = int(del_to.split("/")[-1])
+    try:
+        start_msg_id: int = int(del_from.split("/")[-1])
+        start_msg_ch_id: int = int(del_from.split("/")[-2])
+    except Exception:
+        await hybrid_cmd_router(ctx, f'**Ошибка!**\n\nВ качестве первого аргумента необходимо указать ссылку на сообщение! ⚠️')
+        return
+    try:
+        end_msg_id: int = int(del_from.split("/")[-1])
+    except Exception:
+        await hybrid_cmd_router(ctx, f'**Ошибка!**\n\nВ качестве второго аргумента необходимо указать ссылку на сообщение! ⚠️')
+        return
+
     status_msg = None
     if await validate_channel(ctx, start_msg_ch_id, bot) != True:
         await hybrid_cmd_router(ctx, f'**Ошибка!**\n\nТакой канал не найден или не принадлежит этому серверу')
@@ -963,7 +981,6 @@ async def cmd_clear(ctx, del_from, del_to):
                                      f'Возможно слишком много сообщений отсутствует или Discord ограничивает запросы ⚠️\n'
                                      f'Попробуйте снова.')
                 await status_msg.edit(embed=embed)
-
 
     embed.description = f'**Готово!**\n\nУдаление завершено ✅\nВсего удалено: {total_messages} сообщений'
     await status_msg.edit(embed=embed)

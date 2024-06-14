@@ -96,3 +96,7 @@ async def validate_channel(ctx, ch_id, bot):
     return status
 
 
+async def hex_to_rgb(hex_color):
+    hex_color = hex_color.lstrip('#')
+    rgb = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+    return rgb

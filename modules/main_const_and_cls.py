@@ -15,6 +15,7 @@ class CommandsNames:
     CLEAR = "clear"
     TRANSLATE = "tt"
     LANG = "lang"
+    EMBED = "embed"
 
     COMMANDS = (f'**Список доступных команд:**\n'
                 f'\n'

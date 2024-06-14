@@ -19,7 +19,7 @@ from modules.main_const_and_cls import Bcolors  # импорт кодов цве
 from modules.main_const_and_cls import CachedBans  # импорт генератора сообщений
 from modules.main_const_and_cls import CommandsNames  # импорт названия команд из констант внутри класса
 from modules.tools import get_average_color, is_unicode_emoji, get_dominant_color, \
-    convert_chstr_to_chint, validate_channel  # получение усреднённого цвета RGB
+    convert_chstr_to_chint, validate_channel, hex_to_rgb  # получение усреднённого цвета RGB
 
 import requests
 from bs4 import BeautifulSoup
@@ -397,12 +397,12 @@ async def on_ready():
 
     print("Бот находится в " + str(guild_count) + " гильдиях.\n")
 
-    try:
-        commands_list = await bot.tree.sync()
-        print(f'Синхронизировано команд: {len(commands_list)} - {commands_list}')
-        # for x in commands_list: BotInterface.commands_list.append(x)
-    except Exception as e:
-        print(e)
+    # try:
+    #     commands_list = await bot.tree.sync()
+    #     print(f'Синхронизировано команд: {len(commands_list)} - {commands_list}')
+    #     # for x in commands_list: BotInterface.commands_list.append(x)
+    # except Exception as e:
+    #     print(e)
 
     while True:
         total_stream_checks_awaits = SDI.get_total_stream_checks()
@@ -756,6 +756,41 @@ async def cmd_manage_streams(ctx, command: typing.Literal["add", "remove", "chan
             await hybrid_cmd_router(ctx, "ID канала должен быть числом")
 
 
+@bot.hybrid_command(name=CommandsNames.EMBED, description="Запостить встроенное сообщение")
+@discord.ext.commands.guild_only()
+async def cmd_embeding(ctx, content: str, title: str = None, color=None, image: str = None, thumbnail: str = None):
+
+    try:
+        result_message = await ctx.reply(content="Processing...", ephemeral=True)
+    except Exception as e:
+        print(e)
+
+    msg = f'{content.replace("\\n","\n")}'
+    msg = f'{msg.replace("\\\\\\", "\n")}'
+
+    embed = discord.Embed()
+
+    if color is not None:
+        embed.colour = discord.Colour.from_rgb(*(await hex_to_rgb(color)))
+    if title is not None:
+        embed.title = f'{title}'
+    if content is not None:
+        embed.description = msg
+    if image is not None:
+        embed.set_image(url=image)
+    if thumbnail is not None:
+        embed.set_thumbnail(url=thumbnail)
+
+    embed.set_footer(text=f'by {ctx.author.name}|{ctx.author.id}')
+
+    # await ctx.defer()
+    # await ctx.interaction.response.defer()
+
+    this_channel = ctx.interaction.channel
+    await this_channel.send(embed=embed)
+    await result_message.edit(content="Done!")
+
+
 @bot.hybrid_command(name=CommandsNames.ADDSTREAM, description="Добавить пользовательский стрим-канал в отслеживаемые")
 @discord.ext.commands.guild_only()
 async def cmd_add_user_stream(ctx, command: typing.Literal["add"], param: str):
@@ -780,12 +815,14 @@ async def cmd_move(ctx, message_link_from, message_link_to, move_to_channel_id):
         start_msg_id: int = int(message_link_from.split("/")[-1])
         start_msg_ch_id: int = int(message_link_from.split("/")[-2])
     except Exception:
-        await hybrid_cmd_router(ctx, f'**Ошибка!**\n\nВ качестве первого аргумента необходимо указать ссылку на сообщение! ⚠️')
+        await hybrid_cmd_router(ctx,
+                                f'**Ошибка!**\n\nВ качестве первого аргумента необходимо указать ссылку на сообщение! ⚠️')
         return
     try:
         end_msg_id: int = int(message_link_to.split("/")[-1])
     except Exception:
-        await hybrid_cmd_router(ctx, f'**Ошибка!**\n\nВ качестве второго аргумента необходимо указать ссылку на сообщение! ⚠️')
+        await hybrid_cmd_router(ctx,
+                                f'**Ошибка!**\n\nВ качестве второго аргумента необходимо указать ссылку на сообщение! ⚠️')
         return
 
     if move_to_channel_id.isdigit():
@@ -909,12 +946,14 @@ async def cmd_clear(ctx, del_from, del_to):
         start_msg_id: int = int(del_from.split("/")[-1])
         start_msg_ch_id: int = int(del_from.split("/")[-2])
     except Exception:
-        await hybrid_cmd_router(ctx, f'**Ошибка!**\n\nВ качестве первого аргумента необходимо указать ссылку на сообщение! ⚠️')
+        await hybrid_cmd_router(ctx,
+                                f'**Ошибка!**\n\nВ качестве первого аргумента необходимо указать ссылку на сообщение! ⚠️')
         return
     try:
         end_msg_id: int = int(del_from.split("/")[-1])
     except Exception:
-        await hybrid_cmd_router(ctx, f'**Ошибка!**\n\nВ качестве второго аргумента необходимо указать ссылку на сообщение! ⚠️')
+        await hybrid_cmd_router(ctx,
+                                f'**Ошибка!**\n\nВ качестве второго аргумента необходимо указать ссылку на сообщение! ⚠️')
         return
 
     status_msg = None
@@ -986,7 +1025,6 @@ async def cmd_clear(ctx, del_from, del_to):
     await status_msg.edit(embed=embed)
 
 
-
 @bot.hybrid_command(name=CommandsNames.LANG, description="Change translation language")
 @discord.ext.commands.guild_only()
 async def setup_language(ctx, option: typing.Literal["ru", "en", "pl", "pt"]):
@@ -1005,8 +1043,9 @@ async def context_cmd_translateit(interaction: discord.Interaction, message: dis
     reply = await translate(message.content, "yandex", lang)
     await interaction.response.send_message(f'{flag_icon} | {reply}', ephemeral=True)
     pass
-bot.tree.add_command(context_cmd_translateit)
 
+
+bot.tree.add_command(context_cmd_translateit)
 
 
 # @bot.hybrid_command(name=CommandsNames.TRANSLATE, description="Перевести сообщение на другой язык")

@@ -758,7 +758,7 @@ async def cmd_manage_streams(ctx, command: typing.Literal["add", "remove", "chan
 
 @bot.hybrid_command(name=CommandsNames.EMBED, description="Запостить встроенное сообщение")
 @discord.ext.commands.guild_only()
-async def cmd_embeding(ctx, content: str, title: str = None, color=None, image: str = None, thumbnail: str = None):
+async def cmd_embedding(ctx, content: str, title: str = None, color=None, image: str = None, thumbnail: str = None):
 
     try:
         result_message = await ctx.reply(content="Processing...", ephemeral=True)
@@ -789,6 +789,51 @@ async def cmd_embeding(ctx, content: str, title: str = None, color=None, image: 
     this_channel = ctx.interaction.channel
     await this_channel.send(embed=embed)
     await result_message.edit(content="Done!")
+
+
+@bot.hybrid_command(name=CommandsNames.EMBED_EDIT, description="Изменить встроенное сообщение")
+@discord.ext.commands.guild_only()
+async def cmd_embedding(ctx, message: str, content: str = None, title: str = None, color=None, image: str = None, thumbnail: str = None):
+
+    try:
+        target_msg_id: int = int(message.split("/")[-1])
+        target_msg_ch_id: int = int(message.split("/")[-2])
+    except Exception:
+        await hybrid_cmd_router(ctx, f'**Ошибка!**\n\nВ качестве первого аргумента необходимо указать ссылку на сообщение! ⚠️')
+        return
+
+    target_ch_obj = ctx.guild.get_channel(target_msg_ch_id)
+    target_msg_obj = target_ch_obj.fetch_message(target_msg_id)
+    embed: discord.Embed = target_msg_obj.embeds[0]
+
+    try:
+        result_message = await ctx.reply(content="Processing...", ephemeral=True)
+    except Exception as e:
+        print(e)
+
+    msg = f'{content.replace("\\n","\n")}'
+    msg = f'{msg.replace("\\\\\\", "\n")}'
+
+    if color is not None:
+        embed.colour = discord.Colour.from_rgb(*(await hex_to_rgb(color)))
+    if title is not None:
+        embed.title = f'{title}'
+    if content is not None:
+        embed.description = msg
+    if image is not None:
+        embed.set_image(url=image)
+    if thumbnail is not None:
+        embed.set_thumbnail(url=thumbnail)
+
+    embed.set_footer(text=f'by {ctx.author.name}|{ctx.author.id}')
+
+    # await ctx.defer()
+    # await ctx.interaction.response.defer()
+
+    this_channel = ctx.interaction.channel
+    await this_channel.send(embed=embed)
+    await result_message.edit(content="Done!")
+
 
 
 @bot.hybrid_command(name=CommandsNames.ADDSTREAM, description="Добавить пользовательский стрим-канал в отслеживаемые")
@@ -1083,9 +1128,9 @@ async def on_message(message):
     if message.author.bot: return
     prefix = SDI.get_settings(message.guild.id, "prefix")
     if message.content.startswith(f'{prefix}{CommandsNames.BOTS_KICKED}'): await cmd_bots_kicked(message)
-    if message.content.lower().startswith("tt"):
-        ctx = Context(bot=bot, message=message, view=StringView(message.content))
-        await cmd_do_translate(ctx)
+    # if message.content.lower().startswith("tt"):
+    #     ctx = Context(bot=bot, message=message, view=StringView(message.content))
+    #     await cmd_do_translate(ctx)
 
 
 @bot.event

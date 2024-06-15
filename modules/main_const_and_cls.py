@@ -16,6 +16,7 @@ class CommandsNames:
     TRANSLATE = "tt"
     LANG = "lang"
     EMBED = "embed"
+    EMBED_EDIT = "embed-edit"
 
     COMMANDS = (f'**Список доступных команд:**\n'
                 f'\n'

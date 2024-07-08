@@ -12,9 +12,11 @@ from discord.ext.commands import BucketType, Context
 from discord.ext.commands.view import StringView
 from dotenv import load_dotenv
 from datetime import datetime
+from datetime import date
+import time
 from modules.file_manager import FileAction  # импорт своего класса по работе с файлами
 from modules.lang_traslation import translate, CodeFlagConverter
-from modules.load_config import config  # импорт результата отдельной загрузки для главного конфига
+from modules.load_config import config, save_global_config  # импорт результата отдельной загрузки для главного конфига
 from modules.main_const_and_cls import Bcolors  # импорт кодов цветов и форматирования для консоли
 from modules.main_const_and_cls import CachedBans  # импорт генератора сообщений
 from modules.main_const_and_cls import CommandsNames  # импорт названия команд из констант внутри класса
@@ -397,12 +399,19 @@ async def on_ready():
 
     print("Бот находится в " + str(guild_count) + " гильдиях.\n")
 
-    # try:
-    #     commands_list = await bot.tree.sync()
-    #     print(f'Синхронизировано команд: {len(commands_list)} - {commands_list}')
-    #     # for x in commands_list: BotInterface.commands_list.append(x)
-    # except Exception as e:
-    #     print(e)
+    delta_time = int(time.time()) - int(config['last_global_sync'])
+    if delta_time >= 86400: # 86400 - сутки в секундах
+        try:
+            print(f'Команды не синхронизировались более суток ({date.fromtimestamp(time.time())}). Провожу синхронизацию...')
+            commands_list = await bot.tree.sync()
+            print(f'Синхронизировано команд: {len(commands_list)} - {commands_list}')
+            # for x in commands_list: BotInterface.commands_list.append(x)
+            config['last_global_sync'] = int(time.time())
+            save_global_config()
+        except Exception as e:
+            print(f'Ошибка: {str(e)}')
+    else:
+        print(f'Команды синхронизировались недавно ({date.fromtimestamp(time.time())}). Повторные автоматические синхронизации происходят не чаще раза в сутки.')
 
     while True:
         total_stream_checks_awaits = SDI.get_total_stream_checks()
@@ -1091,6 +1100,25 @@ async def context_cmd_translateit(interaction: discord.Interaction, message: dis
 
 
 bot.tree.add_command(context_cmd_translateit)
+
+
+@bot.hybrid_command(name=CommandsNames.SYNC, description="Обновить список команд")
+@discord.ext.commands.guild_only()
+@commands.cooldown(1, 60, BucketType.user)
+@discord.ext.commands.has_permissions(administrator=True)
+async def cmd_sync(ctx):
+    try:
+        guid_abc_obj = await bot.fetch_guild(ctx.guild.id)
+        commands_list = await bot.tree.sync(guild=guid_abc_obj)
+        print(f'Синхронизировано команд в гильдии ({ctx.guild.name}): {len(commands_list)} - {commands_list}')
+        # for x in commands_list: BotInterface.commands_list.append(x)
+        await hybrid_cmd_router(ctx, f'✅ Команды обновлены!')
+    except Exception as e:
+        print(e)
+        await hybrid_cmd_router(ctx, f':x: Ошибка синхронизации')
+
+
+
 
 
 # @bot.hybrid_command(name=CommandsNames.TRANSLATE, description="Перевести сообщение на другой язык")

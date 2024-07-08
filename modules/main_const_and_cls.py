@@ -17,6 +17,7 @@ class CommandsNames:
     LANG = "lang"
     EMBED = "embed"
     EMBED_EDIT = "embed-edit"
+    SYNC = "sync"
 
     COMMANDS = (f'**Список доступных команд:**\n'
                 f'\n'

@@ -1,9 +1,10 @@
 {
-	"current_locale": "ru",
-	"server_data_path": ".data",
-	"templates_subpath": "_templates",
-	"localization_path": "locale",
-	"global_stream_check_cd": "15",
-	"youtube_fetch_cooldown": "20",
-	"twitch_fetch_cooldown": "20"
+    "current_locale": "ru",
+    "server_data_path": ".data",
+    "templates_subpath": "_templates",
+    "localization_path": "locale",
+    "global_stream_check_cd": "15",
+    "youtube_fetch_cooldown": "20",
+    "twitch_fetch_cooldown": "20",
+    "last_global_sync": 1720448447
 }

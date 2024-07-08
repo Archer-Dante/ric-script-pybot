@@ -149,13 +149,16 @@ class ServerDataInterface:
             cls.create_userdata_from_template(s_id, u_id)
             print(f'Успех!')
             cfg_branch = cls.data[str(s_id)]["users"][str(u_id)]
-        for subbranch in args:
-            if subbranch == args[-1]:  # последний элемент
-                cfg_branch[subbranch] = changing_value
-                # print(cfg_branch[subbranch])
-            else:  # просто расширяем путь дальше и вглубь вложений
-                cfg_branch = cfg_branch[subbranch]
-                # print(cfg_branch)
+        try:
+            for subbranch in args:
+                if subbranch == args[-1]:  # последний элемент
+                    cfg_branch[subbranch] = changing_value
+                    # print(cfg_branch[subbranch])
+                else:  # просто расширяем путь дальше и вглубь вложений
+                    cfg_branch = cfg_branch[subbranch]
+                    # print(cfg_branch)
+        except Exception as e:
+            print(f'Ошибка подготовки данных к сохранению: {str(e)}')
         cls.save_cfgs(s_id)
 
     @classmethod
@@ -1082,10 +1085,13 @@ async def cmd_clear(ctx, del_from, del_to):
 @bot.hybrid_command(name=CommandsNames.LANG, description="Change translation language")
 @discord.ext.commands.guild_only()
 async def setup_language(ctx, option: typing.Literal["ru", "en", "pl", "pt"]):
-    lang = str(option)
-    SDI.set_userdata(ctx.guild.id, ctx.author.id, str(option), "language", "code")
-    flag_icon = country_flags.get_flag(lang)
-    reply = await translate("Язык успешно изменён на", "yandex", lang)
+    try:
+        lang = str(option)
+        SDI.set_userdata(ctx.guild.id, ctx.author.id, str(option), "language", "code")
+        flag_icon = country_flags.get_flag(lang)
+        reply = await translate("Язык успешно изменён на", "yandex", lang)
+    except Exception as e:
+        print(str(e))
     await hybrid_cmd_router(ctx, f'✅ Done!\n\n{reply} {flag_icon}')
     pass
 

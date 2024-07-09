@@ -1100,8 +1100,13 @@ async def setup_language(ctx, option: typing.Literal["ru", "en", "pl", "pt"]):
 async def context_cmd_translateit(interaction: discord.Interaction, message: discord.Message):
     lang = SDI.get_userdata(message.guild.id, interaction.user.id, "language", "code")
     flag_icon = country_flags.get_flag(lang)
+    await interaction.response.defer(ephemeral=True)
     reply = await translate(message.content, "yandex", lang)
-    await interaction.response.send_message(f'{flag_icon} | {reply}', ephemeral=True)
+
+    # await ctx.defer()
+    # await ctx.interaction.response.defer()
+
+    await interaction.followup.send(f'{flag_icon} | {reply}', ephemeral=True)
     pass
 
 

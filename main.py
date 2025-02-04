@@ -10,6 +10,7 @@ import os
 import json
 from discord.ext.commands import BucketType, Context
 from discord.ext.commands.view import StringView
+from discord.ui import Modal, TextInput
 from dotenv import load_dotenv
 from datetime import datetime
 from datetime import date
@@ -356,6 +357,23 @@ SDI = ServerDataInterface  # сокращённый вариант
 country_flags = CodeFlagConverter()
 
 
+class TranslationModal(Modal):
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.add_item(TextInput(label="Имя", placeholder="Введите ваше имя"))
+        self.add_item(TextInput(label="Возраст", placeholder="Введите ваш возраст"))
+    # def __init__(self, text: str):
+    #     super().__init__(title="Информация")
+    #     self.text = text
+
+    async def on_submit(self, interaction: discord.Interaction):
+        # name = self.children[0].value
+        # age = self.children[1].value
+        # await interaction.response.send_message(f"Привет, {name}! Тебе {age} лет.", ephemeral=True)
+        await interaction.response.send_message("blabla", ephemeral=True)
+
+
 async def hybrid_cmd_router(ctx_or_msg, reply, ephemeral=None):
     embed = discord.Embed(
         description=reply,
@@ -403,9 +421,10 @@ async def on_ready():
     print("Бот находится в " + str(guild_count) + " гильдиях.\n")
 
     delta_time = int(time.time()) - int(config['last_global_sync'])
-    if delta_time >= 86400: # 86400 - сутки в секундах
+    if delta_time >= 86400:  # 86400 - сутки в секундах
         try:
-            print(f'Команды не синхронизировались более суток ({date.fromtimestamp(time.time())}). Провожу синхронизацию...')
+            print(
+                f'Команды не синхронизировались более суток ({date.fromtimestamp(time.time())}). Провожу синхронизацию...')
             commands_list = await bot.tree.sync()
             print(f'Синхронизировано команд: {len(commands_list)} - {commands_list}')
             # for x in commands_list: BotInterface.commands_list.append(x)
@@ -414,7 +433,8 @@ async def on_ready():
         except Exception as e:
             print(f'Ошибка: {str(e)}')
     else:
-        print(f'Команды синхронизировались недавно ({date.fromtimestamp(time.time())}). Повторные автоматические синхронизации происходят не чаще раза в сутки.')
+        print(
+            f'Команды синхронизировались недавно ({date.fromtimestamp(time.time())}). Повторные автоматические синхронизации происходят не чаще раза в сутки.')
 
     while True:
         total_stream_checks_awaits = SDI.get_total_stream_checks()
@@ -422,7 +442,7 @@ async def on_ready():
         global_cd = int(config["global_stream_check_cd"]) * sum(total_stream_checks_awaits)
         if global_cd == 0:
             # print(f'Ни на одном сервере не включен постинг стримов. Отдыхаю.')
-            await asyncio.sleep(120)
+            await asyncio.sleep(30)
         else:
             await check_live_streams()
             # print(f'Ожидание глобального кулдауна {global_cd} с.')
@@ -771,13 +791,12 @@ async def cmd_manage_streams(ctx, command: typing.Literal["add", "remove", "chan
 @bot.hybrid_command(name=CommandsNames.EMBED, description="Запостить встроенное сообщение")
 @discord.ext.commands.guild_only()
 async def cmd_embedding(ctx, content: str, title: str = None, color=None, image: str = None, thumbnail: str = None):
-
     try:
         result_message = await ctx.reply(content="Processing...", ephemeral=True)
     except Exception as e:
         print(e)
 
-    msg = f'{content.replace("\\n","\n")}'
+    msg = f'{content.replace("\\n", "\n")}'
     msg = f'{msg.replace("\\\\\\", "\n")}'
 
     embed = discord.Embed()
@@ -805,13 +824,14 @@ async def cmd_embedding(ctx, content: str, title: str = None, color=None, image:
 
 @bot.hybrid_command(name=CommandsNames.EMBED_EDIT, description="Изменить встроенное сообщение")
 @discord.ext.commands.guild_only()
-async def cmd_embedding(ctx, message: str, content: str = None, title: str = None, color=None, image: str = None, thumbnail: str = None):
-
+async def cmd_embedding(ctx, message: str, content: str = None, title: str = None, color=None, image: str = None,
+                        thumbnail: str = None):
     try:
         target_msg_id: int = int(message.split("/")[-1])
         target_msg_ch_id: int = int(message.split("/")[-2])
     except Exception:
-        await hybrid_cmd_router(ctx, f'**Ошибка!**\n\nВ качестве первого аргумента необходимо указать ссылку на сообщение! ⚠️')
+        await hybrid_cmd_router(ctx,
+                                f'**Ошибка!**\n\nВ качестве первого аргумента необходимо указать ссылку на сообщение! ⚠️')
         return
 
     target_ch_obj = ctx.guild.get_channel(target_msg_ch_id)
@@ -823,7 +843,7 @@ async def cmd_embedding(ctx, message: str, content: str = None, title: str = Non
     except Exception as e:
         print(e)
 
-    msg = f'{content.replace("\\n","\n")}'
+    msg = f'{content.replace("\\n", "\n")}'
     msg = f'{msg.replace("\\\\\\", "\n")}'
 
     if color is not None:
@@ -845,7 +865,6 @@ async def cmd_embedding(ctx, message: str, content: str = None, title: str = Non
     this_channel = ctx.interaction.channel
     await this_channel.send(embed=embed)
     await result_message.edit(content="Done!")
-
 
 
 @bot.hybrid_command(name=CommandsNames.ADDSTREAM, description="Добавить пользовательский стрим-канал в отслеживаемые")
@@ -1107,10 +1126,33 @@ async def context_cmd_translateit(interaction: discord.Interaction, message: dis
     # await ctx.interaction.response.defer()
 
     await interaction.followup.send(f'{flag_icon} | {reply}', ephemeral=True)
+
+    # modal = MyModal(title="Пример модального окна")
+    # await interaction.response.send_modal(modal)
+
     pass
 
 
 bot.tree.add_command(context_cmd_translateit)
+
+
+@bot.hybrid_command(name=CommandsNames.TEST, description="test")
+@discord.ext.commands.guild_only()
+@discord.ext.commands.has_permissions(administrator=True)
+async def cmd_test(interaction: discord.Interaction):
+    text_to_show = "Это текст, который вы хотите показать в модальном окне."
+    modal = TranslationModal(text_to_show)
+    await interaction.response.send_modal(modal)
+
+    # lang = SDI.get_userdata(message.guild.id, interaction.user.id, "language", "code")
+    # flag_icon = country_flags.get_flag(lang)
+    #
+    # reply = await translate(message.content, "yandex", lang)
+    #
+    # modal = TranslationModal(title="Пример модального окна")
+    # await interaction.response.send_modal(modal)
+    #
+    # pass
 
 
 @bot.hybrid_command(name=CommandsNames.SYNC, description="Обновить список команд")
@@ -1120,16 +1162,13 @@ bot.tree.add_command(context_cmd_translateit)
 async def cmd_sync(ctx):
     try:
         guid_abc_obj = await bot.fetch_guild(ctx.guild.id)
-        commands_list = await bot.tree.sync(guild=guid_abc_obj)
+        commands_list = await bot.tree.sync()  # guild=guid_abc_obj
         print(f'Синхронизировано команд в гильдии ({ctx.guild.name}): {len(commands_list)} - {commands_list}')
         # for x in commands_list: BotInterface.commands_list.append(x)
         await hybrid_cmd_router(ctx, f'✅ Команды обновлены!')
     except Exception as e:
         print(e)
         await hybrid_cmd_router(ctx, f':x: Ошибка синхронизации')
-
-
-
 
 
 # @bot.hybrid_command(name=CommandsNames.TRANSLATE, description="Перевести сообщение на другой язык")
@@ -1309,15 +1348,19 @@ async def on_guild_join(guild_obj):
 async def check_live_streams():
     for server_id in SDI.data.copy():
         stream_settings = SDI.get_settings(server_id, "notify", "options", "stream_starts")
-        # print(f'Для сервера {ServerID} настройка равна: {stream_settings}')
+
+        if config["debug"] == True:
+            print(f'Для сервера {server_id} настройка равна: {stream_settings}')
         if stream_settings == True:
             url_list_of_channels = SDI.get_settings(server_id, "streams", "streaming_channels")
             if len(url_list_of_channels) > 0:
-                # print(f'Список каналов на проверку для сервера {server_id}: {notify_stream_channels}')
+                if config["debug"] == True:
+                    print(f'Список каналов на проверку для сервера {server_id}: {url_list_of_channels}')
                 post_to_channel: int = SDI.get_settings(server_id, "streams", "options", "post_chid")
                 await run_check_for_list(url_list_of_channels, post_to_channel)
             else:
-                # print(f'Список каналов для проверки стримов на сервере {server_id} пуст, хотя функция проверки включена')
+                if config["debug"] == True:
+                    print(f'Список каналов для проверки стримов на сервере {server_id} пуст, хотя функция проверки включена')
                 pass
 
 
@@ -1326,12 +1369,14 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
     tw_icon = "https://cdn.discordapp.com/emojis/1247105082202525746.webp"
 
     for channel_url in url_list_of_channels:
-        # print(f'Канал на проверку: {channel_url}')
+        if config["debug"] == True:
+            print(f'Канал на проверку: {channel_url}')
 
         if "youtube" in channel_url:
             try:
                 stream_url = channel_url + "/streams"  # overlay-style="LIVE"
-                # print(f'Проверяю онлайн на канале: {stream_url}')
+                if config["debug"] == True:
+                    print(f'Проверяю онлайн на канале: {stream_url}')
                 response = requests.get(stream_url, headers=headers)
                 soup = BeautifulSoup(response.content, 'html.parser')
 
@@ -1349,6 +1394,8 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
                 # 4 - Плейлисты
                 basic_tag_path = (ytInitialData["contents"]["twoColumnBrowseResultsRenderer"]["tabs"][3]["tabRenderer"]
                 ["content"]["richGridRenderer"]["contents"][0]["richItemRenderer"]["content"]["videoRenderer"])
+                if config["debug"] == True:
+                    print(f'{(basic_tag_path["thumbnailOverlays"][0]["thumbnailOverlayTimeStatusRenderer"]["text"]["runs"][0]["text"])}')
                 current_stream_status = (basic_tag_path["thumbnailOverlays"][0]["thumbnailOverlayTimeStatusRenderer"]
                 ["text"]["runs"][0]["text"])
 
@@ -1381,15 +1428,19 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
                         embed.set_footer(text="Mister RIC approves!")
                         await discord_channel.send(embed=embed)
                     else:
-                        # print(f'Такой стрим {basic_tag_path["videoId"]} уже постили на канале: {post_to_channel}')
+                        if config["debug"] == True:
+                            print(f'Такой стрим {basic_tag_path["videoId"]} уже постили на канале: {post_to_channel}')
                         pass
 
             except Exception as e:
                 if 'runs' in str(e) or 'content' in str(e):
                     # если ошибка содержит не найденный аргумент - значит его нет, как и трансляции
-                    # print(f'Нет активных трансляций')
+                    if config["debug"] == True:
+                        print(f'Нет активных трансляций')
                     pass
                 elif 'tabRenderer' in str(e):
+                    if config["debug"] == True:
+                        print(f'Нет вкладки трансляций')
                     # значит вкладки трансляций нет или есть, но их ещё ни разу не было на данном канале
                     pass
                 else:
@@ -1397,6 +1448,9 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
 
         elif "twitch" in channel_url:
             user_login = channel_url[channel_url.rfind("/") + 1:]
+
+            if config["debug"] == True:
+                print(f'Проверяю онлайн на канале: {channel_url}')
 
             twitch = await Twitch(os.getenv("TWITCH_API_APPID"), os.getenv("TWITCH_API_SECRET"))
             # 0 - live или пустая строка если стрима нет
@@ -1435,10 +1489,18 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
                     embed.set_footer(text="Mister RIC approves!")
                     await discord_channel.send(embed=embed)
                 else:
-                    # print(f'Такой стрим {stream_data[1]} уже постили на канале: {post_to_channel}')
+                    if config["debug"] == True:
+                        print(f'Такой стрим {stream_data[1]} уже постили на канале: {post_to_channel}')
                     pass
+            else:
+                if config["debug"] == True:
+                    print(f'Нет активных трансляций')
+
+        else:
+            print(f'Неизвестный канал: {channel_url}')
 
         # print(f'Ожидаю тайм-аут: {int(config["global_stream_check_cd"])} с.')
+        print(f'')
         await asyncio.sleep(int(config["global_stream_check_cd"]))
 
 

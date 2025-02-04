@@ -18,6 +18,7 @@ class CommandsNames:
     EMBED = "embed"
     EMBED_EDIT = "embed-edit"
     SYNC = "sync"
+    TEST = "test"
 
     COMMANDS = (f'**Список доступных команд:**\n'
                 f'\n'
@@ -26,11 +27,11 @@ class CommandsNames:
                 f'- `/toggle (leave)` - включить/выключить оповещения о выходе человека с сервера'
                 f'*(не применяется к оповещениям о автоматически кикнутых бот-аккаунтах)*\n'
                 f'\n'
-                f'- `/stream-post-to-channel [id]` - указать куда отправлять оповещения\n'
-                f'- `/stream-add-channel [url]` - добавить канал в список отслеживаемых\n'
-                f'- `/stream-remove-channel [url]` - удалить канал из списка отслеживаемых\n'
+                f'- `/stream channel [id]` - указать куда отправлять оповещения\n'
+                f'- `/stream add [channel url]` - добавить канал в список отслеживаемых\n'
+                f'- `/stream remove [channel url]` - удалить канал из списка отслеживаемых\n'
+                f'- `/stream list` - показать весь список отслеживаемых стрим-каналов\n'
                 f'- `/toggle notify-stream` - включить/выключить оповещения о стримах\n'
-                f'- `/stream-list` - показать весь список отслеживаемых стрим-каналов\n'
                 f'\n'
                 f'- `/addstream [url]` - добавить канал в список отслеживаемых (для пользователя)\n'
                 f'- `/toggle allow-user-streams` - переключить возможность использовать комманду /addstream\n'

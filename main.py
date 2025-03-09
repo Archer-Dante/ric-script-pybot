@@ -979,7 +979,7 @@ async def cmd_move(ctx, message_link_from, message_link_to, move_to_channel_id):
 
     webhook = SyncWebhook.from_url(webhook.url)  # Initializing webhook
 
-    for each_msg in messages_sequence:
+    for index, each_msg in enumerate(messages_sequence):
         try:
             user_nickname = each_msg.author.display_name
             compiled_message: str = each_msg.content
@@ -992,6 +992,7 @@ async def cmd_move(ctx, message_link_from, message_link_to, move_to_channel_id):
                                             username=user_nickname,
                                             avatar_url=each_msg.author.avatar.url,
                                             wait=True)
+            print(f"{datetime.now()} | Перенос сообщения № {index}")
             if len(each_msg.reactions) > 0:
                 for reaction in each_msg.reactions:
                     try:
@@ -1014,8 +1015,10 @@ async def cmd_move(ctx, message_link_from, message_link_to, move_to_channel_id):
     # Получение и изменение Embed из сообщения
     embed = status_msg.embeds[0]
     if ctx.command.name == CommandsNames.MOVE:
+        print(f"{datetime.now()} | Перенос сообщений завершён")
         embed.description = f'**Готово!**\n\nПеренос завершён! ✅\nТеперь сообщения находятся на канале <#{move_to_channel_id}>'
     elif ctx.command.name == CommandsNames.COPY:
+        print(f"{datetime.now()} | Копирование сообщений завершено")
         embed.description = f'**Готово!**\n\nКопирование завершено! ✅\nСообщения находятся здесь <#{move_to_channel_id}>'
 
     await status_msg.edit(embed=embed)

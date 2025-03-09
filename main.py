@@ -1468,18 +1468,21 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
             # 5 - ссылка на превью
             # 6 - ссылка на аватар
             stream_data = []
+
             async for x in twitch.get_streams(user_login=[user_login]):
+                print(f'Данные с твича: {x}')
                 stream_data.append(x.type)
                 stream_data.append(x.id)
                 stream_data.append(x.user_name)
                 stream_data.append(x.title)
                 stream_data.append(x.game_name)
-                stream_data.append(x.thumbnail_url.replace("{width}", "720").replace("{height}", "480"))
+                stream_data.append(x.thumbnail_url.replace("{width}", "720").replace("{height}", "480").split('?')[0])
             async for x in twitch.get_users(logins=[user_login]):
                 stream_data.append(x.profile_image_url)
 
             if len(stream_data) > 1:
                 if SDI.check_tw_cache(post_to_channel, stream_data[1]) != True:
+                    print(f'ссылка на превью: {stream_data[5]}')
                     print(f'{datetime.now()} | Обнаружен активный стрим!')
                     SDI.update_tw_cache(post_to_channel, stream_data[1])
                     discord_channel = bot.get_channel(post_to_channel)
@@ -1491,7 +1494,8 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
                         color=Colour.from_rgb(*get_average_color(stream_data[6]))
                     )
                     embed.set_thumbnail(url=stream_data[6])
-                    embed.set_image(url=stream_data[5])
+                    thumb_recached = f"{stream_data[5]}?{int(time.time())}"
+                    embed.set_image(url=thumb_recached)
                     embed.set_author(name=stream_data[2], icon_url=tw_icon)
                     embed.set_footer(text="Mister RIC approves!")
                     await discord_channel.send(embed=embed)

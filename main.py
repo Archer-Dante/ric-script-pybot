@@ -12,7 +12,7 @@ from discord.ext.commands import BucketType, Context
 from discord.ext.commands.view import StringView
 from discord.ui import Modal, TextInput
 from dotenv import load_dotenv
-from datetime import datetime
+from modules.patches import datetime
 from datetime import date
 import time
 from modules.file_manager import FileAction  # импорт своего класса по работе с файлами
@@ -31,6 +31,7 @@ from twitchAPI.twitch import Twitch
 
 # import configparser
 # from modules.web_manager import progress_bar
+
 
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
@@ -1376,13 +1377,13 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
 
     for channel_url in url_list_of_channels:
         if config["debug"] == True:
-            print(f'Канал на проверку: {channel_url}')
+            print(f'{datetime.now()} | Канал на проверку: {channel_url}')
 
         if "youtube" in channel_url:
             try:
                 stream_url = channel_url + "/streams"  # overlay-style="LIVE"
                 if config["debug"] == True:
-                    print(f'Проверяю онлайн на канале: {stream_url}')
+                    print(f'{datetime.now()} | Проверяю онлайн на канале: {stream_url}')
                 response = requests.get(stream_url, headers=headers)
                 soup = BeautifulSoup(response.content, 'html.parser')
 
@@ -1407,7 +1408,7 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
 
                 if len(str(current_stream_status)) >= 1:
                     if SDI.check_yt_cache(post_to_channel, basic_tag_path["videoId"]) != True:
-                        print("Обнаружен активный стрим!")
+                        print("{datetime.now()} | Обнаружен активный стрим!")
                         stream_url = f'https://www.youtube.com/watch?v={basic_tag_path["videoId"]}'
 
                         # кэширование ютуб-канала, который уже получил оповещение о своём стриме
@@ -1435,28 +1436,28 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
                         await discord_channel.send(embed=embed)
                     else:
                         if config["debug"] == True:
-                            print(f'Такой стрим {basic_tag_path["videoId"]} уже постили на канале: {post_to_channel}')
+                            print(f'{datetime.now()} | Такой стрим {basic_tag_path["videoId"]} уже постили на канале: {post_to_channel}')
                         pass
 
             except Exception as e:
                 if 'runs' in str(e) or 'content' in str(e):
                     # если ошибка содержит не найденный аргумент - значит его нет, как и трансляции
                     if config["debug"] == True:
-                        print(f'Нет активных трансляций')
+                        print(f'{datetime.now()} | Нет активных трансляций')
                     pass
                 elif 'tabRenderer' in str(e):
                     if config["debug"] == True:
-                        print(f'Нет вкладки трансляций')
+                        print(f'{datetime.now()} | Нет вкладки трансляций')
                     # значит вкладки трансляций нет или есть, но их ещё ни разу не было на данном канале
                     pass
                 else:
-                    print(f'Ошибка при проверке канала: {e} | {channel_url}')
+                    print(f'{datetime.now()} | Ошибка при проверке канала: {e} | {channel_url}')
 
         elif "twitch" in channel_url:
             user_login = channel_url[channel_url.rfind("/") + 1:]
 
             if config["debug"] == True:
-                print(f'Проверяю онлайн на канале: {channel_url}')
+                print(f'{datetime.now()} | Проверяю онлайн на канале: {channel_url}')
 
             twitch = await Twitch(os.getenv("TWITCH_API_APPID"), os.getenv("TWITCH_API_SECRET"))
             # 0 - live или пустая строка если стрима нет
@@ -1479,7 +1480,7 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
 
             if len(stream_data) > 1:
                 if SDI.check_tw_cache(post_to_channel, stream_data[1]) != True:
-                    print(f'Обнаружен активный стрим!')
+                    print(f'{datetime.now()} | Обнаружен активный стрим!')
                     SDI.update_tw_cache(post_to_channel, stream_data[1])
                     discord_channel = bot.get_channel(post_to_channel)
 
@@ -1496,14 +1497,14 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
                     await discord_channel.send(embed=embed)
                 else:
                     if config["debug"] == True:
-                        print(f'Такой стрим {stream_data[1]} уже постили на канале: {post_to_channel}')
+                        print(f'{datetime.now()} | Такой стрим {stream_data[1]} уже постили на канале: {post_to_channel}')
                     pass
             else:
                 if config["debug"] == True:
-                    print(f'Нет активных трансляций')
+                    print(f'{datetime.now()} | Нет активных трансляций')
 
         else:
-            print(f'Неизвестный канал: {channel_url}')
+            print(f'{datetime.now()} | Неизвестный канал: {channel_url}')
 
         # print(f'Ожидаю тайм-аут: {int(config["global_stream_check_cd"])} с.')
         print(f'')

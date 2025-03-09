@@ -3,9 +3,9 @@
     "server_data_path": ".data",
     "templates_subpath": "_templates",
     "localization_path": "locale",
-    "global_stream_check_cd": "15",
-    "youtube_fetch_cooldown": "10",
-    "twitch_fetch_cooldown": "10",
-    "last_global_sync": 1738559914,
+    "global_stream_check_cd": "30",
+    "youtube_fetch_cooldown": "20",
+    "twitch_fetch_cooldown": "20",
+    "last_global_sync": 1741527051,
     "debug": true
 }

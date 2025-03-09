@@ -890,15 +890,13 @@ async def cmd_move(ctx, message_link_from, message_link_to, move_to_channel_id):
     try:
         start_msg_id: int = int(message_link_from.split("/")[-1])
         start_msg_ch_id: int = int(message_link_from.split("/")[-2])
-    except Exception:
-        await hybrid_cmd_router(ctx,
-                                f'**Ошибка!**\n\nВ качестве первого аргумента необходимо указать ссылку на сообщение! ⚠️')
+    except Exception as e:
+        await hybrid_cmd_router(ctx,f'**Ошибка!**\n\nВ качестве первого аргумента необходимо указать ссылку на сообщение! ⚠️')
         return
     try:
         end_msg_id: int = int(message_link_to.split("/")[-1])
-    except Exception:
-        await hybrid_cmd_router(ctx,
-                                f'**Ошибка!**\n\nВ качестве второго аргумента необходимо указать ссылку на сообщение! ⚠️')
+    except Exception as e:
+        await hybrid_cmd_router(ctx,f'**Ошибка!**\n\nВ качестве второго аргумента необходимо указать ссылку на сообщение! ⚠️')
         return
 
     if move_to_channel_id.isdigit():
@@ -912,11 +910,9 @@ async def cmd_move(ctx, message_link_from, message_link_to, move_to_channel_id):
         return
     else:
         if ctx.command.name == CommandsNames.MOVE:
-            status_msg = await hybrid_cmd_router(ctx, f'**Готово!**\n\n'
-                                                      f'Перенос сообщений из <#{start_msg_ch_id}> в <#{move_to_channel_id}> запущен!')
+            status_msg = await hybrid_cmd_router(ctx, f'**Готово!**\n\n'f'Перенос сообщений из <#{start_msg_ch_id}> в <#{move_to_channel_id}> запущен!')
         elif ctx.command.name == CommandsNames.COPY:
-            status_msg = await hybrid_cmd_router(ctx, f'**Готово!**\n\n'
-                                                      f'Копирование сообщений из <#{start_msg_ch_id}> в <#{move_to_channel_id}> запущено!')
+            status_msg = await hybrid_cmd_router(ctx, f'**Готово!**\n\n'f'Копирование сообщений из <#{start_msg_ch_id}> в <#{move_to_channel_id}> запущено!')
 
     # Получение Embed из сообщения, чтобы в дальнейшем его править
     embed = status_msg.embeds[0]
@@ -938,6 +934,10 @@ async def cmd_move(ctx, message_link_from, message_link_to, move_to_channel_id):
         return
 
     try:
+        # if start_msg_id == end_message:
+        #     pass
+        # else:
+        #     end_message = await channel_from.fetch_message(end_msg_id)
         end_message = await channel_from.fetch_message(end_msg_id)
     except Exception as e:
         print(e)
@@ -949,8 +949,14 @@ async def cmd_move(ctx, message_link_from, message_link_to, move_to_channel_id):
         await status_msg.edit(embed=embed)
         return
 
-    # последовательный набор сообщений + добавляем в список первое сообщение
-    messages_sequence: list = [await bot.get_channel(start_msg_ch_id).fetch_message(start_msg_id)]
+    # последовательный набор сообщений
+    messages_sequence: list = []
+
+    # добавляем в список первое сообщение, если это не единственное сообщение
+    if start_msg_id != end_msg_id:
+        messages_sequence.append(await bot.get_channel(start_msg_ch_id).fetch_message(start_msg_id))
+    else:
+        pass
 
     # добавляем все промежуточные сообщения между первым и последним
     async for msg in channel_from.history(after=start_message, before=end_message, limit=6666):

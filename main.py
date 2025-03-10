@@ -1,4 +1,5 @@
 import asyncio
+import io
 import typing
 
 import discord
@@ -983,16 +984,24 @@ async def cmd_move(ctx, message_link_from, message_link_to, move_to_channel_id):
         try:
             user_nickname = each_msg.author.display_name
             compiled_message: str = each_msg.content
-            if each_msg.content == "":
-                compiled_message += "** **"
+            # if each_msg.content == "":
+            #     compiled_message += "** **"
+            msg_files = []
             if len(each_msg.attachments) > 0:
-                for attachment in each_msg.attachments:
-                    compiled_message += attachment.url + "\n"
+                for i, attachment in enumerate(each_msg.attachments):
+                    # compiled_message += "" # attachment.url + "\n"
+                    response = requests.get(attachment.url, headers=headers)
+                    msg_files.append(discord.File(filename=attachment.url[attachment.url.rfind("/"):attachment.url.rfind("?")],
+                                                  fp=io.BytesIO(response.content)))
+                    print(f"{datetime.now()} | Переносимое сообщение № {index} содержит файл: {attachment.url}")
+
+            print(f"{datetime.now()} | Перенос сообщения № {index} ...")
             reposted_message = webhook.send(content=compiled_message,
                                             username=user_nickname,
                                             avatar_url=each_msg.author.avatar.url,
+                                            files=msg_files,
                                             wait=True)
-            print(f"{datetime.now()} | Перенос сообщения № {index}")
+            print(f"{datetime.now()} | Перенос сообщения № {index} завершён")
             if len(each_msg.reactions) > 0:
                 for reaction in each_msg.reactions:
                     try:

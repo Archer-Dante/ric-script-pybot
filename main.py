@@ -1488,7 +1488,7 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
                 stream_data.append(x.user_name)
                 stream_data.append(x.title)
                 stream_data.append(x.game_name)
-                stream_data.append(x.thumbnail_url.replace("{width}", "720").replace("{height}", "480").split('?')[0])
+                stream_data.append(x.thumbnail_url.replace("{width}", "720").replace("{height}", "481").split('?')[0])
             async for x in twitch.get_users(logins=[user_login]):
                 stream_data.append(x.profile_image_url)
 

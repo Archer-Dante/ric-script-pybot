@@ -19,6 +19,7 @@ class CommandsNames:
     EMBED_EDIT = "embed-edit"
     SYNC = "sync"
     TEST = "test"
+    AUTOROLE = "autorole"
 
     COMMANDS = (f'**Список доступных команд:**\n'
                 f'\n'

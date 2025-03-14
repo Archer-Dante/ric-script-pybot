@@ -102,27 +102,28 @@ class ServerDataInterface:
     def get_settings(cls, s_id, *args):
         cfg_branch = cls.data[str(s_id)]["settings"]
         for value in args:
-            if value in cfg_branch:
-                # print(cfg_branch[str(value)])
-                cfg_branch = cfg_branch[value]
-            else:
-                # print(f'Значение {value} не найдено в {cfg_branch}')
-                pass
-        # print(cfg_branch)
+            cfg_branch = cfg_branch.setdefault(value, {})
         return cfg_branch
 
     @classmethod
     def set_settings(cls, s_id, changing_value, *args):
-        # print(changing_value)
         cfg_branch = cls.data[str(s_id)]["settings"]
-        for subbranch in args:
-            if subbranch == args[-1]:  # последний элемент
-                cfg_branch[subbranch] = changing_value
-                # print(cfg_branch[subbranch])
-            else:  # просто расширяем путь дальше и вглубь вложений
-                cfg_branch = cfg_branch[subbranch]
-                # print(cfg_branch)
+        for subbranch in args[:-1]:
+            cfg_branch = cfg_branch.setdefault(subbranch, {})
+
+        cfg_branch[args[-1]] = changing_value
+
         cls.save_cfgs(s_id)
+
+    # @classmethod
+    # def set_settings(cls, s_id, changing_value, *args):
+    #     cfg_branch = cls.data[str(s_id)]["settings"]
+    #     for subbranch in args:
+    #         if subbranch == args[-1]:  # последний элемент
+    #             cfg_branch[subbranch] = changing_value
+    #         else:  # просто расширяем путь дальше и вглубь вложений
+    #             cfg_branch = cfg_branch[subbranch]
+    #     cls.save_cfgs(s_id)
 
     @classmethod
     def get_userdata(cls, s_id, u_id, *args):
@@ -425,8 +426,7 @@ async def on_ready():
     delta_time = int(time.time()) - int(config['last_global_sync'])
     if delta_time >= 86400:  # 86400 - сутки в секундах
         try:
-            print(
-                f'Команды не синхронизировались более суток ({date.fromtimestamp(time.time())}). Провожу синхронизацию...')
+            print(f'Команды не синхронизировались более суток ({date.fromtimestamp(time.time())}). Провожу синхронизацию...')
             commands_list = await bot.tree.sync()
             print(f'Синхронизировано команд: {len(commands_list)} - {commands_list}')
             # for x in commands_list: BotInterface.commands_list.append(x)
@@ -435,8 +435,7 @@ async def on_ready():
         except Exception as e:
             print(f'Ошибка: {str(e)}')
     else:
-        print(
-            f'Команды синхронизировались недавно ({date.fromtimestamp(time.time())}). Повторные автоматические синхронизации происходят не чаще раза в сутки.')
+        print(f'Команды синхронизировались недавно ({date.fromtimestamp(time.time())}). Повторные автоматические синхронизации происходят не чаще раза в сутки.')
 
     while True:
         total_stream_checks_awaits = SDI.get_total_stream_checks()
@@ -469,13 +468,11 @@ async def cmd_daily(ctx):
 @bot.hybrid_command(name=CommandsNames.AUTOKICK, description="Настроить систему автоматических киков")
 @discord.ext.commands.guild_only()
 @discord.ext.commands.has_permissions(administrator=True)
-async def cmd_autokick(ctx, action: typing.Literal[
-    "setup-trap", "remove-traps", "required-role", "ban-instead", "notify-here", "clear-all"],
-                       a1: str = None, a2: str = None):
+async def cmd_autokick(ctx, action: typing.Literal["setup-trap", "remove-traps", "required-role", "ban-instead", "notify-here", "clear-all"], a1: str = None, a2: str = None):
     if action == "setup-trap":
         if a1 is None or a2 is None:
             await hybrid_cmd_router(ctx,
-                                    f'Используя `{action}` нужно указывать оба аргумента: ссылку на сообщение и эмодзи!')
+                                    f'❌ Используя `{action}` нужно указывать оба аргумента: ссылку на сообщение и эмодзи!')
         else:
             all_traps: list = SDI.get_settings(ctx.guild.id, "autokick", "trap_channels")
             msg = a1
@@ -505,11 +502,11 @@ async def cmd_autokick(ctx, action: typing.Literal[
                         raise ValueError(f'{a2} не является стандартным или загруженным на сервер эмодзи')
 
                 if guild_id != ctx.guild.id:
-                    raise ValueError(f"Нельзя ставить ловушки на другом сервере! Фу таким быть!")
+                    raise ValueError(f"❌ Нельзя ставить ловушки на другом сервере! Фу таким быть!")
 
                 for trap in all_traps:
                     if trap[0] == channel_id and trap[1] == msg_id and trap[2] == react_id:
-                        raise ValueError(f'Такая ловушка уже есть! {react}')
+                        raise ValueError(f'⚠️ Такая ловушка уже есть! {react}')
 
                 ch_obj = bot.get_channel(channel_id)
                 msg_obj = await ch_obj.fetch_message(msg_id)
@@ -518,12 +515,12 @@ async def cmd_autokick(ctx, action: typing.Literal[
                     new_data = [channel_id, msg_id, react_id]
                     all_traps.append(new_data)
                     SDI.set_settings(ctx.guild.id, all_traps, "autokick", "trap_channels")
-                    reply = (f'**Ловушка успешно установлена и эмодзи добавлен!**\n\n'
+                    reply = (f'✅ **Ловушка успешно установлена и эмодзи добавлен!**\n\n'
                              f'**• {react} • https://discord.com/channels/{ctx.guild.id}/{channel_id}/{msg_id} • {react} •**')
                     await hybrid_cmd_router(ctx, reply)
 
                 except Exception as e:
-                    await hybrid_cmd_router(ctx, f'Что-то пошло не так. Вы точно добавили смайлик?\n'
+                    await hybrid_cmd_router(ctx, f'❌ Что-то пошло не так. Вы точно добавили смайлик?\n'
                                                  f'Добавлять можно только смайлы с серверов где я присутствую.\n'
                                                  f'{str(e)}')
                 pass
@@ -533,7 +530,7 @@ async def cmd_autokick(ctx, action: typing.Literal[
 
     elif action == "remove-traps":
         if a1 is None:
-            await hybrid_cmd_router(ctx, f'**Ошибка!**\n\n'
+            await hybrid_cmd_router(ctx, f'❌ **Ошибка!**\n\n'
                                          f'Используя `{action}` нужно указать ссылку на сообщение в первое поле')
         else:
             all_traps: list = SDI.get_settings(ctx.guild.id, "autokick", "trap_channels")
@@ -565,17 +562,17 @@ async def cmd_autokick(ctx, action: typing.Literal[
             SDI.set_settings(ctx.guild.id, all_traps, "autokick", "trap_channels")
 
             if total_removed == 0:
-                reply = (f'**Ошибка?**\n\n'
+                reply = (f'⚠️**Ошибка?**\n\n'
                          f'Ловушек на данном сообщении не обнаружено')
             else:
-                reply = (f'**Готово!**\n\n'
+                reply = (f'✅ **Готово!**\n\n'
                          f'Ловушек удалено: {total_removed}')
             await hybrid_cmd_router(ctx, reply)
         pass
 
     elif action == "required-role":
         if a1 is None:
-            await hybrid_cmd_router(ctx, f'**Ошибка!**\n\n'
+            await hybrid_cmd_router(ctx, f'❌ **Ошибка!**\n\n'
                                          f'Используя `{action}` нужно указать роль: ID или @упоминание роли!'
                                          f'`0` - если хотите отключить требование к роли насовсем.')
         else:
@@ -591,8 +588,7 @@ async def cmd_autokick(ctx, action: typing.Literal[
                     if role_data == 0:
                         # если передали 0, значит ничего кроме как записи не требуется
                         SDI.set_settings(ctx.guild.id, int(role_data), "autokick", "options", "required_role_id")
-                        await hybrid_cmd_router(ctx, f'**Готово!**\n\n'
-                                                     f'Требование роли для срабатывания ловушек отключено!')
+                        await hybrid_cmd_router(ctx, f'✅ **Готово!**\n\n' f'Требование роли для срабатывания ловушек отключено!')
                     else:
                         # если это число, но не 0, значит нужно проверить, что это всё же существующая роль
                         role_abc_obj: [discord.Role | None] = None
@@ -600,18 +596,17 @@ async def cmd_autokick(ctx, action: typing.Literal[
                             # проверка наличия роли на текущем сервере
                             role_abc_obj = ctx.guild.get_role(role_data)
                         except Exception:
-                            print(f'Ошибка при проверке роли во время команды {action}')
+                            print(f'❌ Ошибка при проверке роли во время команды {action}')
 
                         print(type(role_abc_obj), role_abc_obj)
 
                         if role_abc_obj is None:
                             # если такой роли нет - сообщить об этом
-                            await hybrid_cmd_router(ctx, f'**Ошибка!**\n\n'
-                                                         f'Роли с таким ID нет на данном сервере!')
+                            await hybrid_cmd_router(ctx, f'❌ **Ошибка!**\n\n'f'Роли с таким ID нет на данном сервере!')
                         elif isinstance(role_abc_obj, discord.role.Role):
                             # если такая роль есть - выставить этот ID в конфиг
                             SDI.set_settings(ctx.guild.id, int(role_data), "autokick", "options", "required_role_id")
-                            await hybrid_cmd_router(ctx,
+                            await hybrid_cmd_router(ctx,f'✅ **Готово!**\n\n'
                                                     f'Для срабатывания ловушек установлена новая роль: {role_abc_obj.mention}\n'
                                                     f'Теперь ловушки будут рбаотать только на владельцев данной роли!')
                         else:
@@ -637,7 +632,7 @@ async def cmd_autokick(ctx, action: typing.Literal[
 
     elif action == "ban-instead":
         if a1 is None:
-            await hybrid_cmd_router(ctx, f'Используя `{action}` нужно указать Yes или True для включения\n'
+            await hybrid_cmd_router(ctx, f'❌ Используя `{action}` нужно указать Yes или True для включения\n'
                                          f'или No или False для выключения')
         else:
             value: str = a1.lower()
@@ -645,10 +640,10 @@ async def cmd_autokick(ctx, action: typing.Literal[
                 if value == "yes" or value == "true":
                     if SDI.get_settings(ctx.guild.id, "autokick", "options", "ban_instead") == False:
                         SDI.set_settings(ctx.guild.id, True, "autokick", "options", "ban_instead")
-                        await hybrid_cmd_router(ctx, f'**Готово!**\n\n'
+                        await hybrid_cmd_router(ctx, f'✅ **Готово!**\n\n'
                                                      f'Теперь ловушки будут приводить к бану на сервере!')
                     else:
-                        raise ValueError(f"**Ошибка!**\n\n"
+                        raise ValueError(f"⚠️ **Ошибка!**\n\n"
                                          f"Функция бана уже включена!")
                 elif value == "no" or value == "false":
                     if SDI.get_settings(ctx.guild.id, "autokick", "options", "ban_instead") == True:
@@ -656,7 +651,7 @@ async def cmd_autokick(ctx, action: typing.Literal[
                         await hybrid_cmd_router(ctx, f'**Готово!**\n\n'
                                                      f'Теперь ловушки будут приводить к кику с сервера!')
                     else:
-                        raise ValueError(f"**Ошибка!**\n\n"
+                        raise ValueError(f"⚠️ **Ошибка!**\n\n"
                                          f"Функция бана уже отключена!")
             except ValueError as e:
                 await hybrid_cmd_router(ctx, str(e))
@@ -664,7 +659,7 @@ async def cmd_autokick(ctx, action: typing.Literal[
 
     elif action == "notify-here":
         if a1 is None:
-            await hybrid_cmd_router(ctx, f'Используя `{action}` нужно указать ID канала или его #меншен!')
+            await hybrid_cmd_router(ctx, f'❌ Используя `{action}` нужно указать ID канала или его #меншен!')
         else:
             chpath_or_chid: [int | str] = a1
             try:
@@ -673,24 +668,24 @@ async def cmd_autokick(ctx, action: typing.Literal[
                         int(chpath_or_chid))
                     # если None - канал не найден
                     if channel_abc is None:
-                        raise ValueError(f'**Ошибка!**\n\nТакой канал не найден!')
+                        raise ValueError(f'❌ **Ошибка!**\n\nТакой канал не найден!')
                     elif channel_abc.guild.id != ctx.guild.id:
-                        raise ValueError(f'**Ошибка!**\n\nЭтот канал принадлежит не вашей гильдии! Атата!')
+                        raise ValueError(f'❌ **Ошибка!**\n\nЭтот канал принадлежит не вашей гильдии! Атата!')
                     else:
                         SDI.set_settings(ctx.guild.id, channel_abc.id, "autokick", "options", "channel_to_farewell")
-                        await hybrid_cmd_router(ctx, f'**Готово!**\n\n'
+                        await hybrid_cmd_router(ctx, f'✅ **Готово!**\n\n'
                                                      f'Теперь оповещения о срабатывании ловушек будут приходить в <#{channel_abc.id}>!')
                 elif chpath_or_chid.find("<#") >= 0:
                     ch_id = (chpath_or_chid.split("#"))[1][0:-1]
                     channel_abc: [discord.abc.GuildChannel | discord.TextChannel | None] = bot.get_channel(int(ch_id))
                     # если None - канал не найден
                     if channel_abc is None:
-                        raise ValueError(f'**Ошибка!**\n\nТакой канал не найден!')
+                        raise ValueError(f'❌ **Ошибка!**\n\nТакой канал не найден!')
                     elif channel_abc.guild.id != ctx.guild.id:
-                        raise ValueError(f'**Ошибка!**\n\nЭтот канал принадлежит не вашей гильдии! Атата!')
+                        raise ValueError(f'❌ **Ошибка!**\n\nЭтот канал принадлежит не вашей гильдии! Атата!')
                     else:
                         SDI.set_settings(ctx.guild.id, channel_abc.id, "autokick", "options", "channel_to_farewell")
-                        await hybrid_cmd_router(ctx, f'**Готово!**\n\n'
+                        await hybrid_cmd_router(ctx, f'✅ **Готово!**\n\n'
                                                      f'Теперь оповещения о срабатывании ловушек будут приходить в <#{channel_abc.id}>!')
             except ValueError as e:
                 await hybrid_cmd_router(ctx, str(e))
@@ -702,7 +697,7 @@ async def cmd_autokick(ctx, action: typing.Literal[
         updated_traps: list = all_traps.copy()
 
         tasks = []
-        await hybrid_cmd_router(ctx, f'**Готово!**\n\n'
+        await hybrid_cmd_router(ctx, f'✅ **Готово!**\n\n'
                                      f'{len(all_traps)} ловушек удаляются вместе с реакциями.\n')
         for trap in all_traps:
             ch_obj = bot.get_channel(trap[0])
@@ -725,28 +720,59 @@ async def cmd_autokick(ctx, action: typing.Literal[
         await asyncio.gather(*tasks)
 
 
-@bot.hybrid_command(name=CommandsNames.TOGGLE,
-                    description="Переключить настройку в указанное или противоположное значение")
+@bot.hybrid_command(name=CommandsNames.AUTOROLE, description="Настроить автоматическую выдачу ролей")
+@discord.ext.commands.guild_only()
+@discord.ext.commands.has_permissions(administrator=True)
+async def cmd_autorole(ctx, action: typing.Literal["on-join"], roles: str = None):
+    if action == "on-join":
+        if roles is None:
+            await hybrid_cmd_router(ctx, f'⚠️  **Ошибка!**\n\n'
+                                         f'Используя `{action}` нужно указать роль: ID или @упоминание роли!\n'
+                                         f'Если хотите несколько ролей - напишите их разделяя запятой, например:\n\n'
+                                         f'`886762325040836690, 892705836995072020`\n\n'
+                                         f'или\n\n'
+                                         f'`@player, @purple`\n\n'
+                                         f'`0` - если хотите отключить требование к роли насовсем.')
+        else:
+            all_roles = roles.strip().split(",")
+            for index, x in enumerate(all_roles):
+                all_roles[index] = "".join(filter(str.isdigit, x))
+            print(all_roles)
+
+            if len(all_roles) == 1 and all_roles[0] == 0:
+                SDI.set_settings(ctx.guild.id, 0, "autorole", "on_join", "roles")
+                await hybrid_cmd_router(ctx, f'✅ **Готово!**\n\nРоли больше не будут назначаться при входе на сервер!')
+            else:
+                SDI.set_settings(ctx.guild.id, all_roles, "autorole", "on_join", "roles")
+                await hybrid_cmd_router(ctx, f'✅ **Готово!**\n\nТеперь роль будет назначаться при входе на сервер!')
+
+            if config["debug"] == True:
+                found_roles = SDI.get_settings(ctx.guild.id,"autorole", "on_join", "roles")
+                print(f'Полученные значения: {found_roles}')
+
+
+
+@bot.hybrid_command(name=CommandsNames.TOGGLE, description="Переключить настройку в указанное или противоположное значение")
 @commands.cooldown(1, 4, BucketType.user)
 @discord.ext.commands.guild_only()
 @discord.ext.commands.has_permissions(administrator=True)
 async def cmd_toggle(ctx, setting: typing.Literal["notify-leave", "notify-stream", "allow-user-streams"]):
     if setting == "notify-leave":
         SDI.toggle_settings(ctx.guild.id, "notify", "options", "member_quits")
-        reply = f'Теперь настройка {setting} переключена в положение **{SDI.get_settings(ctx.guild.id, "notify", "options", "member_quits")}**'
+        reply = f'✅ Теперь настройка {setting} переключена в положение **{SDI.get_settings(ctx.guild.id, "notify", "options", "member_quits")}**'
         await hybrid_cmd_router(ctx, reply)
     elif setting == "notify-stream":
         SDI.toggle_settings(ctx.guild.id, "notify", "options", "stream_starts")
-        reply = f'Теперь настройка {setting} переключена в положение **{SDI.get_settings(ctx.guild.id, "notify", "options", "stream_starts")}**'
+        reply = f'✅ Теперь настройка {setting} переключена в положение **{SDI.get_settings(ctx.guild.id, "notify", "options", "stream_starts")}**'
         await hybrid_cmd_router(ctx, reply)
         pass
     elif setting == "allow-user-streams":
         SDI.toggle_settings(ctx.guild.id, "streams", "options", "allow-user-stream-add")
-        reply = f'Теперь настройка {setting} переключена в положение **{SDI.get_settings(ctx.guild.id, "notify", "options", "stream_starts")}**'
+        reply = f'✅ Теперь настройка {setting} переключена в положение **{SDI.get_settings(ctx.guild.id, "notify", "options", "stream_starts")}**'
         await hybrid_cmd_router(ctx, reply)
         pass
     else:
-        await hybrid_cmd_router(ctx, "Такого параметра не существует")
+        await hybrid_cmd_router(ctx, "⚠️ Такого параметра не существует")
     pass
 
 
@@ -764,19 +790,19 @@ async def cmd_bots_kicked(ctx):
 async def cmd_manage_streams(ctx, command: typing.Literal["add", "remove", "channel", "list"], param: str):
     if command == "add":
         if param.find("youtube") < 0 and param.find("twitch") < 0:
-            await hybrid_cmd_router(ctx, "Не указан URL канала")
+            await hybrid_cmd_router(ctx, "⚠️ Не указан URL канала")
             return
         reply = SDI.manage_list(ctx.guild.id, "add", param, "streams", "streaming_channels")
         await hybrid_cmd_router(ctx, reply)
     elif command == "remove":
         if param.find("youtube") < 0 and param.find("twitch") < 0:
-            await hybrid_cmd_router(ctx, "Не указан URL канала")
+            await hybrid_cmd_router(ctx, "⚠️ Не указан URL канала")
             return
         reply = SDI.manage_list(ctx.guild.id, "remove", param, "streams", "streaming_channels")
         await hybrid_cmd_router(ctx, reply)
     elif command == "list":
         if param != "all":
-            await hybrid_cmd_router(ctx, "Указан неверный параметр")
+            await hybrid_cmd_router(ctx, "⚠️ Указан неверный параметр")
             return
         reply = SDI.get_stream_channels(ctx.guild.id)
         await hybrid_cmd_router(ctx, f'Список отслеживаемых каналов: \n{reply}')
@@ -785,9 +811,9 @@ async def cmd_manage_streams(ctx, command: typing.Literal["add", "remove", "chan
             ch_id: int = int(param)
             SDI.set_settings(ctx.guild.id, ch_id, "streams", "options", "post_chid")
             reply = SDI.get_settings(ctx.guild.id, "streams", "options", "post_chid")
-            await hybrid_cmd_router(ctx, f'Теперь сообщения от стримов будут публиковаться здесь: <#{reply}>')
+            await hybrid_cmd_router(ctx, f'✅ Теперь сообщения от стримов будут публиковаться здесь: <#{reply}>')
         except Exception:
-            await hybrid_cmd_router(ctx, "ID канала должен быть числом")
+            await hybrid_cmd_router(ctx, "⚠️ ID канала должен быть числом")
 
 
 @bot.hybrid_command(name=CommandsNames.EMBED, description="Запостить встроенное сообщение")
@@ -826,14 +852,12 @@ async def cmd_embedding(ctx, content: str, title: str = None, color=None, image:
 
 @bot.hybrid_command(name=CommandsNames.EMBED_EDIT, description="Изменить встроенное сообщение")
 @discord.ext.commands.guild_only()
-async def cmd_embedding(ctx, message: str, content: str = None, title: str = None, color=None, image: str = None,
-                        thumbnail: str = None):
+async def cmd_embedding(ctx, message: str, content: str = None, title: str = None, color=None, image: str = None, thumbnail: str = None):
     try:
         target_msg_id: int = int(message.split("/")[-1])
         target_msg_ch_id: int = int(message.split("/")[-2])
     except Exception:
-        await hybrid_cmd_router(ctx,
-                                f'**Ошибка!**\n\nВ качестве первого аргумента необходимо указать ссылку на сообщение! ⚠️')
+        await hybrid_cmd_router(ctx,f'**❌ Ошибка!**\n\nВ качестве первого аргумента необходимо указать ссылку на сообщение!')
         return
 
     target_ch_obj = ctx.guild.get_channel(target_msg_ch_id)
@@ -893,12 +917,12 @@ async def cmd_move(ctx, message_link_from, message_link_to, move_to_channel_id):
         start_msg_id: int = int(message_link_from.split("/")[-1])
         start_msg_ch_id: int = int(message_link_from.split("/")[-2])
     except Exception as e:
-        await hybrid_cmd_router(ctx,f'**Ошибка!**\n\nВ качестве первого аргумента необходимо указать ссылку на сообщение! ⚠️')
+        await hybrid_cmd_router(ctx,f'❌ **Ошибка!**\n\nВ качестве первого аргумента необходимо указать ссылку на сообщение!️')
         return
     try:
         end_msg_id: int = int(message_link_to.split("/")[-1])
     except Exception as e:
-        await hybrid_cmd_router(ctx,f'**Ошибка!**\n\nВ качестве второго аргумента необходимо указать ссылку на сообщение! ⚠️')
+        await hybrid_cmd_router(ctx,f'❌ **Ошибка!**\n\nВ качестве второго аргумента необходимо указать ссылку на сообщение!')
         return
 
     if move_to_channel_id.isdigit():
@@ -908,13 +932,13 @@ async def cmd_move(ctx, message_link_from, message_link_to, move_to_channel_id):
 
     status_msg = None
     if await validate_channel(ctx, move_to_channel_id, bot) != True:
-        await hybrid_cmd_router(ctx, f'**Ошибка!**\n\nТакой канал не найден или не принадлежит этому серверу')
+        await hybrid_cmd_router(ctx, f'❌ **Ошибка!**\n\nТакой канал не найден или не принадлежит этому серверу')
         return
     else:
         if ctx.command.name == CommandsNames.MOVE:
-            status_msg = await hybrid_cmd_router(ctx, f'**Готово!**\n\n'f'Перенос сообщений из <#{start_msg_ch_id}> в <#{move_to_channel_id}> запущен!')
+            status_msg = await hybrid_cmd_router(ctx, f'✅ **Готово!**\n\n'f'Перенос сообщений из <#{start_msg_ch_id}> в <#{move_to_channel_id}> запущен!')
         elif ctx.command.name == CommandsNames.COPY:
-            status_msg = await hybrid_cmd_router(ctx, f'**Готово!**\n\n'f'Копирование сообщений из <#{start_msg_ch_id}> в <#{move_to_channel_id}> запущено!')
+            status_msg = await hybrid_cmd_router(ctx, f'✅ **Готово!**\n\n'f'Копирование сообщений из <#{start_msg_ch_id}> в <#{move_to_channel_id}> запущено!')
 
     # Получение Embed из сообщения, чтобы в дальнейшем его править
     embed = status_msg.embeds[0]
@@ -929,9 +953,9 @@ async def cmd_move(ctx, message_link_from, message_link_to, move_to_channel_id):
         print(e)
         # меняем Embed описание из сообщения, равно содержание сообщения
         if ctx.command.name == CommandsNames.MOVE:
-            embed.description = f'**Ошибка!**\n\nПеренос не завершён ❌\nСтартового сообщения не существует!'
+            embed.description = f'❌ **Ошибка!**\n\nПеренос не завершён \nСтартового сообщения не существует!'
         elif ctx.command.name == CommandsNames.COPY:
-            embed.description = f'**Ошибка!**\n\nКопирование не завершено ❌\nСтартового сообщения не существует!'
+            embed.description = f'❌ **Ошибка!**\n\nКопирование не завершено\nСтартового сообщения не существует!'
         await status_msg.edit(embed=embed)
         return
 
@@ -945,9 +969,9 @@ async def cmd_move(ctx, message_link_from, message_link_to, move_to_channel_id):
         print(e)
         # меняем Embed описание из сообщения, равно содержание сообщения
         if ctx.command.name == CommandsNames.MOVE:
-            embed.description = f'**Ошибка!**\n\nПеренос не завершён ❌\nКонечного сообщения не существует!'
+            embed.description = f'❌ **Ошибка!**\n\nПеренос не завершён\nКонечного сообщения не существует!'
         elif ctx.command.name == CommandsNames.COPY:
-            embed.description = f'**Ошибка!**\n\nКопирование не завершено ❌\nКонечного сообщения не существует!'
+            embed.description = f'❌ **Ошибка!**\n\nКопирование не завершено\nКонечного сообщения не существует!'
         await status_msg.edit(embed=embed)
         return
 
@@ -1025,10 +1049,10 @@ async def cmd_move(ctx, message_link_from, message_link_to, move_to_channel_id):
     embed = status_msg.embeds[0]
     if ctx.command.name == CommandsNames.MOVE:
         print(f"{datetime.now()} | Перенос сообщений завершён")
-        embed.description = f'**Готово!**\n\nПеренос завершён! ✅\nТеперь сообщения находятся на канале <#{move_to_channel_id}>'
+        embed.description = f'✅ **Готово!**\n\nПеренос завершён!\nТеперь сообщения находятся на канале <#{move_to_channel_id}>'
     elif ctx.command.name == CommandsNames.COPY:
         print(f"{datetime.now()} | Копирование сообщений завершено")
-        embed.description = f'**Готово!**\n\nКопирование завершено! ✅\nСообщения находятся здесь <#{move_to_channel_id}>'
+        embed.description = f'✅ **Готово!**\n\nКопирование завершено!\nСообщения находятся здесь <#{move_to_channel_id}>'
 
     await status_msg.edit(embed=embed)
 
@@ -1041,19 +1065,17 @@ async def cmd_clear(ctx, del_from, del_to):
         start_msg_id: int = int(del_from.split("/")[-1])
         start_msg_ch_id: int = int(del_from.split("/")[-2])
     except Exception:
-        await hybrid_cmd_router(ctx,
-                                f'**Ошибка!**\n\nВ качестве первого аргумента необходимо указать ссылку на сообщение! ⚠️')
+        await hybrid_cmd_router(ctx,f'❌ **Ошибка!**\n\nВ качестве первого аргумента необходимо указать ссылку на сообщение! ️')
         return
     try:
         end_msg_id: int = int(del_from.split("/")[-1])
     except Exception:
-        await hybrid_cmd_router(ctx,
-                                f'**Ошибка!**\n\nВ качестве второго аргумента необходимо указать ссылку на сообщение! ⚠️')
+        await hybrid_cmd_router(ctx,f'❌ **Ошибка!**\n\nВ качестве второго аргумента необходимо указать ссылку на сообщение! ️')
         return
 
     status_msg = None
     if await validate_channel(ctx, start_msg_ch_id, bot) != True:
-        await hybrid_cmd_router(ctx, f'**Ошибка!**\n\nТакой канал не найден или не принадлежит этому серверу')
+        await hybrid_cmd_router(ctx, f'❌ **Ошибка!**\n\nТакой канал не найден или не принадлежит этому серверу')
         return
     else:
         status_msg = await hybrid_cmd_router(ctx, f'**Ожидайте!**\n\n'
@@ -1070,7 +1092,7 @@ async def cmd_clear(ctx, del_from, del_to):
     except Exception as e:
         print(e)
         # меняем Embed описание из сообщения, равно содержание сообщения
-        embed.description = f'**Ошибка!**\n\nУдаление не завершено ❌\nСтартового сообщения не существует!'
+        embed.description = f'❌ **Ошибка!**\n\nУдаление не завершено\nСтартового сообщения не существует!'
         await status_msg.edit(embed=embed)
         return
 
@@ -1079,7 +1101,7 @@ async def cmd_clear(ctx, del_from, del_to):
     except Exception as e:
         print(e)
         # меняем Embed описание из сообщения, равно содержание сообщения
-        embed.description = f'**Ошибка!**\n\nУдаление не завершено ❌\nКонечного сообщения не существует!'
+        embed.description = f'❌ **Ошибка!**\n\nУдаление не завершено\nКонечного сообщения не существует!'
         await status_msg.edit(embed=embed)
         return
 
@@ -1110,13 +1132,13 @@ async def cmd_clear(ctx, del_from, del_to):
             if errors_count < 10:
                 await asyncio.sleep(30)
             else:
-                embed.description = (f'**Остановлено!!**\n\n'
+                embed.description = (f'⚠️ **Остановлено!!**\n\n'
                                      f'Всего удалено: {total_messages} сообщений\n'
-                                     f'Возможно слишком много сообщений отсутствует или Discord ограничивает запросы ⚠️\n'
+                                     f'Возможно слишком много сообщений отсутствует или Discord ограничивает запросы\n'
                                      f'Попробуйте снова.')
                 await status_msg.edit(embed=embed)
 
-    embed.description = f'**Готово!**\n\nУдаление завершено ✅\nВсего удалено: {total_messages} сообщений'
+    embed.description = f'✅ **Готово!**\n\nУдаление завершено\nВсего удалено: {total_messages} сообщений'
     await status_msg.edit(embed=embed)
 
 
@@ -1159,7 +1181,7 @@ bot.tree.add_command(context_cmd_translateit)
 @discord.ext.commands.guild_only()
 @discord.ext.commands.has_permissions(administrator=True)
 async def cmd_test(interaction: discord.Interaction):
-    text_to_show = "Это текст, который вы хотите показать в модальном окне."
+    text_to_show = "Ну и что ты тут забыл?."
     modal = TranslationModal(text_to_show)
     await interaction.response.send_modal(modal)
 
@@ -1187,7 +1209,7 @@ async def cmd_sync(ctx):
         await hybrid_cmd_router(ctx, f'✅ Команды обновлены!')
     except Exception as e:
         print(e)
-        await hybrid_cmd_router(ctx, f':x: Ошибка синхронизации')
+        await hybrid_cmd_router(ctx, f'❌ Ошибка синхронизации')
 
 
 # @bot.hybrid_command(name=CommandsNames.TRANSLATE, description="Перевести сообщение на другой язык")
@@ -1224,7 +1246,7 @@ async def cmd_sync(ctx):
 async def on_message(message):
     if message.author.bot: return
     prefix = SDI.get_settings(message.guild.id, "prefix")
-    if message.content.startswith(f'{prefix}{CommandsNames.BOTS_KICKED}'): await cmd_bots_kicked(message)
+    if prefix is not None and message.content.startswith(f'{prefix}{CommandsNames.BOTS_KICKED}'): await cmd_bots_kicked(message)
     # if message.content.lower().startswith("tt"):
     #     ctx = Context(bot=bot, message=message, view=StringView(message.content))
     #     await cmd_do_translate(ctx)
@@ -1235,10 +1257,10 @@ async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandOnCooldown):
         if ctx.command.name == 'bots-kicked':
             if str(error).find("in ") != -1:
-                await ctx.send(f'`Вы слишком часто используете команду, попробуйте снова через '
+                await ctx.send(f'⚠️`Вы слишком часто используете команду, попробуйте снова через '
                                f'{str(error)[str(error).find("in ") + 6:]}`')
             else:
-                await ctx.send(f'`Вы слишком часто используете команду, попробуйте позже')
+                await ctx.send(f'⚠️`Вы слишком часто используете команду, попробуйте позже')
         else:
             await ctx.send('`Ошибка кулдауна`')
 
@@ -1322,6 +1344,19 @@ async def on_raw_reaction_add(reaction):  # должно работать даж
         if found_trap:
             break
     print(f'\n')
+
+
+@bot.event
+async def on_member_join(member):
+    print(f'{datetime.now()} | Пользователь {member.nick} ({member.name}) зашёл на сервер {member.guild.name}.')
+    roles = SDI.get_settings(member.guild.id, "autorole", "on_join", "roles")
+    if isinstance(roles, list) and len(roles) > 0 and int(roles[0]) != 0:
+        for role_id in roles:
+            role = member.guild.get_role(int(role_id))
+            await member.add_roles(role)
+        print(f"{datetime.now()} | Роли успешно добавлены")
+    else:
+        print(f"{datetime.now()} | Ролей для автовыдачи не обнаружено")
 
 
 @bot.event

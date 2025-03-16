@@ -1455,7 +1455,7 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
 
                 if len(str(current_stream_status)) >= 1:
                     if SDI.check_yt_cache(post_to_channel, basic_tag_path["videoId"]) != True:
-                        print("{datetime.now()} | Обнаружен активный стрим!")
+                        print(f'{datetime.now()} | Обнаружен активный стрим!')
                         stream_url = f'https://www.youtube.com/watch?v={basic_tag_path["videoId"]}'
 
                         # кэширование ютуб-канала, который уже получил оповещение о своём стриме

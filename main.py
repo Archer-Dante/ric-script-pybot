@@ -1,5 +1,6 @@
 import asyncio
 import io
+import re
 import typing
 
 import discord
@@ -413,8 +414,12 @@ async def config_make_validate(guild_object):
 
 @bot.event
 async def on_ready():
+    print("Зашёл в on_ready()")
+
     activity = discord.Game(name="Thinking of next RIC tournament..?")
     await bot.change_presence(activity=activity)
+
+    print("Поменял статус")
 
     guild_count = 0
     for guild in bot.guilds:
@@ -1273,16 +1278,24 @@ async def on_raw_reaction_add(reaction):  # должно работать даж
     message_bdy = message_id.content
     time_string = f'{datetime.now().date().strftime("%d-%m-%Y")} - {datetime.now().time().strftime("%H:%M:%S")}'
 
-    print(
-        f'{Bcolors.BOLD}Timestamp:{Bcolors.ENDC} {Bcolors.OKGREEN}{time_string}{Bcolors.ENDC}\n'
-        f'{Bcolors.BOLD}ID Сервера:{Bcolors.ENDC} "{await bot.fetch_guild(reaction.guild_id)}" - {reaction.guild_id}\n'
-        f'{Bcolors.BOLD}ID Сообщения:{Bcolors.ENDC} {reaction.message_id}\n'
-        f'{Bcolors.BOLD}Эмодзи:{Bcolors.ENDC} <:{reaction.emoji.name}:{reaction.emoji.id}> \n'
-        f'{Bcolors.BOLD}ID Юзера:{Bcolors.ENDC} {reaction.user_id} под ником {reaction.member.display_name} ({reaction.member.name})\n'
-        f'{Bcolors.BOLD}Ссылка на сообщение:{Bcolors.ENDC}\n'
-        f'https://discord.com/channels/{reaction.guild_id}/{reaction.channel_id}/{reaction.message_id}\n'
-        f'{Bcolors.BOLD}Тело сообщения:{Bcolors.ENDC}\n{Bcolors.OKCYAN}{message_bdy}{Bcolors.ENDC}\n'
-        f'{Bcolors.BOLD}Автор сообщения: {Bcolors.ENDC}{message_id.author.display_name} ({message_id.author.global_name})')
+    # print(
+    #     f'{Bcolors.BOLD}Timestamp:{Bcolors.ENDC} {Bcolors.OKGREEN}{time_string}{Bcolors.ENDC}\n'
+    #     f'{Bcolors.BOLD}ID Сервера:{Bcolors.ENDC} "{await bot.fetch_guild(reaction.guild_id)}" - {reaction.guild_id}\n'
+    #     f'{Bcolors.BOLD}ID Сообщения:{Bcolors.ENDC} {reaction.message_id}\n'
+    #     f'{Bcolors.BOLD}Эмодзи:{Bcolors.ENDC} <:{reaction.emoji.name}:{reaction.emoji.id}> \n'
+    #     f'{Bcolors.BOLD}ID Юзера:{Bcolors.ENDC} {reaction.user_id} под ником {reaction.member.display_name} ({reaction.member.name})\n'
+    #     f'{Bcolors.BOLD}Ссылка на сообщение:{Bcolors.ENDC}\n'
+    #     f'https://discord.com/channels/{reaction.guild_id}/{reaction.channel_id}/{reaction.message_id}\n'
+    #     f'{Bcolors.BOLD}Тело сообщения:{Bcolors.ENDC}\n{Bcolors.OKCYAN}{message_bdy}{Bcolors.ENDC}\n'
+    #     f'{Bcolors.BOLD}Автор сообщения: {Bcolors.ENDC}{message_id.author.display_name} ({message_id.author.global_name})')
+
+    print(f'{datetime.now()} | {Bcolors.BOLD}{Bcolors.OKGREEN}{reaction.member.display_name}{Bcolors.ENDC} '
+          f'поставил <:{reaction.emoji.name}:{reaction.emoji.id}> '
+          f'на сообщение от {Bcolors.BOLD}{message_id.author.display_name} ({message_id.author.global_name}){Bcolors.ENDC}'
+          f'\n'
+          f'{datetime.now()} | Превью: {Bcolors.OKCYAN}{re.sub(r"\s*\r?\n\s*", " ", message_bdy[0:99])}...{Bcolors.ENDC}'
+          f'\n'
+          f'{datetime.now()} | Линк: https://discord.com/channels/{reaction.guild_id}/{reaction.channel_id}/{reaction.message_id}')
 
     required_role_id: int = SDI.get_settings(reaction.guild_id, "autokick", "options", "required_role_id")
     trap_channels: list = SDI.get_settings(reaction.guild_id, "autokick", "trap_channels")

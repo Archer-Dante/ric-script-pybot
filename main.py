@@ -31,17 +31,20 @@ from bs4 import BeautifulSoup
 from collections import defaultdict
 from twitchAPI.twitch import Twitch
 
-# import configparser
-# from modules.web_manager import progress_bar
-
 
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 
 # юзерагент для запросов
-headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                         'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'}
-# headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0'}
+headers = {
+    'User-Agent': (
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+        'AppleWebKit/537.36 (KHTML, like Gecko) '
+        'Chrome/124.0.0.0 Safari/537.36'
+    ),
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+}
 
 bot = commands.Bot(command_prefix="рик", intents=discord.Intents.all())
 
@@ -421,12 +424,19 @@ async def on_ready():
 
     print("Поменял статус")
 
+    # обновление куки при каждом запуске бота
+    from modules.selen import initiate_selenium
+    initiate_selenium()
+
+    print("Обновил куки для ютуба")
+
     guild_count = 0
     for guild in bot.guilds:
         await config_make_validate(guild)
         guild_count = guild_count + 1
 
     print("Бот находится в " + str(guild_count) + " гильдиях.\n")
+
 
     delta_time = int(time.time()) - int(config['last_global_sync'])
     if delta_time >= 86400:  # 86400 - сутки в секундах
@@ -1435,6 +1445,9 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
     yt_icon = "https://cdn.discordapp.com/emojis/1247105064259293255.webp"
     tw_icon = "https://cdn.discordapp.com/emojis/1247105082202525746.webp"
 
+    cookie_list: dict = json.load(open("cookies.json", "r", encoding="utf-8"))
+    cookies = {cookie["name"]: cookie["value"] for cookie in cookie_list}
+
     for channel_url in url_list_of_channels:
         if config["debug"] == True:
             print(f'{datetime.now()} | Канал на проверку: {channel_url}')
@@ -1442,10 +1455,18 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
         if "youtube" in channel_url:
             try:
                 stream_url = channel_url + "/streams"  # overlay-style="LIVE"
+
                 if config["debug"] == True:
                     print(f'{datetime.now()} | Проверяю онлайн на канале: {stream_url}')
-                response = requests.get(stream_url, headers=headers)
-                soup = BeautifulSoup(response.content, 'html.parser')
+
+                response = requests.get(stream_url, headers=headers, cookies=cookies)
+                soup = BeautifulSoup(response.text, 'html.parser')
+
+                if config["debug"] == True:
+                    with open("response.json", "w", encoding="utf-8") as f:
+                        f.write(response.text)
+                    with open("soup.json", "w", encoding="utf-8") as f:
+                        f.write(soup.text)
 
                 script_tag = soup.select_one('script:-soup-contains("ytInitialData")')
                 script_content = script_tag.string
@@ -1453,6 +1474,10 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
                 json_end = script_content.rfind('}') + 1
                 json_data = script_content[json_start:json_end]
                 ytInitialData = json.loads(json_data)
+
+                # print(ytInitialData)
+                # with open("ytInitialData.json", "w", encoding="utf-8") as f:
+                #    json.dump(ytInitialData, f, ensure_ascii=False, indent=2)
 
                 # 0 - Главная
                 # 1 - Видео

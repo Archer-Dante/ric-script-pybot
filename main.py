@@ -1544,7 +1544,12 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
             if config["debug"] == True:
                 print(f'{datetime.now()} | Проверяю онлайн на канале: {channel_url}')
 
-            twitch = await Twitch(os.getenv("TWITCH_API_APPID"), os.getenv("TWITCH_API_SECRET"))
+            try:
+                twitch = await Twitch(os.getenv("TWITCH_API_APPID"), os.getenv("TWITCH_API_SECRET"))
+            except Exception as e:
+                print(f'{datetime.now()} | {Bcolors.WARNING}Ошибка доступа к API Twitch, проблемы с соединением? #1 {Bcolors.ENDC}: {e}')
+                continue
+
             # 0 - live или пустая строка если стрима нет
             # 1 - ID видео-стрима
             # 2 - логин \ юзернейм
@@ -1554,16 +1559,20 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
             # 6 - ссылка на аватар
             stream_data = []
 
-            async for x in twitch.get_streams(user_login=[user_login]):
-                print(f'Данные с твича: {x}')
-                stream_data.append(x.type)
-                stream_data.append(x.id)
-                stream_data.append(x.user_name)
-                stream_data.append(x.title)
-                stream_data.append(x.game_name)
-                stream_data.append(x.thumbnail_url.replace("{width}", "720").replace("{height}", "481").split('?')[0])
-            async for x in twitch.get_users(logins=[user_login]):
-                stream_data.append(x.profile_image_url)
+            try:
+                async for x in twitch.get_streams(user_login=[user_login]):
+                    print(f'Данные с твича: {x}')
+                    stream_data.append(x.type)
+                    stream_data.append(x.id)
+                    stream_data.append(x.user_name)
+                    stream_data.append(x.title)
+                    stream_data.append(x.game_name)
+                    stream_data.append(x.thumbnail_url.replace("{width}", "720").replace("{height}", "481").split('?')[0])
+                async for x in twitch.get_users(logins=[user_login]):
+                    stream_data.append(x.profile_image_url)
+            except Exception as e:
+                print(f'{datetime.now()} | {Bcolors.WARNING}Ошибка доступа к API Twitch, проблемы с соединением? #1 {Bcolors.ENDC}: {e} \n')
+                continue
 
             if len(stream_data) > 1:
                 if SDI.check_tw_cache(post_to_channel, stream_data[1]) != True:

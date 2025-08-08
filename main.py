@@ -1083,7 +1083,7 @@ async def cmd_clear(ctx, del_from, del_to):
         await hybrid_cmd_router(ctx,f'❌ **Ошибка!**\n\nВ качестве первого аргумента необходимо указать ссылку на сообщение! ️')
         return
     try:
-        end_msg_id: int = int(del_from.split("/")[-1])
+        end_msg_id: int = int(del_to.split("/")[-1])
     except Exception:
         await hybrid_cmd_router(ctx,f'❌ **Ошибка!**\n\nВ качестве второго аргумента необходимо указать ссылку на сообщение! ️')
         return
@@ -1140,7 +1140,7 @@ async def cmd_clear(ctx, del_from, del_to):
             await each_msg.delete()
             total_messages += 1
             print(f'{total_messages}/{len(messages_sequence)} | Сообщение удалено: {each_msg.id} - {each_msg.content}')
-            await asyncio.sleep(1)
+            await asyncio.sleep(5)
         except Exception as e:
             print(f'Ошибка удаления сообщения: {str(e)}\nДанные сообщения: {each_msg}')
             errors_count += 1

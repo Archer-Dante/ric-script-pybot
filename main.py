@@ -1459,7 +1459,7 @@ async def run_check_for_list(url_list_of_channels, post_to_channel, yt_type=None
                 if config["debug"] == True:
                     print(f'{datetime.now()} | Проверяю онлайн на канале: {stream_url}')
 
-                response = requests.get(stream_url, headers=headers, cookies=cookies)
+                response = requests.get(stream_url, headers=headers, cookies=cookies, timeout=10)
                 soup = BeautifulSoup(response.text, 'html.parser')
 
                 if config["debug"] == True:

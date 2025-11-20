@@ -454,7 +454,7 @@ async def on_ready():
 
     while True:
         total_stream_checks_awaits = SDI.get_total_stream_checks()
-        print(f'Всего стрим-каналов на обработке: {total_stream_checks_awaits}')
+        print(f'Всего стрим-каналов на обработке: {total_stream_checks_awaits} \n')
         global_cd = int(config["global_stream_check_cd"]) * sum(total_stream_checks_awaits)
         if global_cd == 0:
             # print(f'Ни на одном сервере не включен постинг стримов. Отдыхаю.')
@@ -1432,7 +1432,7 @@ async def check_live_streams():
             url_list_of_channels = SDI.get_settings(server_id, "streams", "streaming_channels")
             if len(url_list_of_channels) > 0:
                 if config["debug"] == True:
-                    print(f'Список каналов на проверку для сервера {server_id}: {url_list_of_channels}')
+                    print(f'Список каналов на проверку для сервера {server_id}: {url_list_of_channels} \n\n')
                 post_to_channel: int = SDI.get_settings(server_id, "streams", "options", "post_chid")
                 await run_check_for_list(url_list_of_channels, post_to_channel)
             else:

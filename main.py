@@ -47,6 +47,7 @@ headers = {
 }
 
 bot = commands.Bot(command_prefix="рик", intents=discord.Intents.all())
+print("Версия discordpy: ", discord.__version__)
 
 
 class ServerDataInterface:
@@ -478,6 +479,24 @@ async def cmd_helpinfo(ctx):
 async def cmd_daily(ctx):
     print("test")
     await ctx.send("Daily yet not implemented! Stay tuned!!")
+
+
+@bot.tree.command(name="join", description="Зайти в голосовой чат")
+@discord.ext.commands.guild_only()
+async def cmd_join(interaction: discord.Interaction):
+    if interaction.user.voice is None:
+        await hybrid_cmd_router("Вас нет ни в одном голосовом канале.")
+        return
+
+    channel = interaction.user.voice.channel
+    vc = interaction.guild.voice_client
+
+    if vc:
+        await vc.move_to(channel)
+    else:
+        await channel.connect()
+
+    await hybrid_cmd_router(f"✅ Вхожу в {channel.name}")
 
 
 @bot.hybrid_command(name=CommandsNames.AUTOKICK, description="Настроить систему автоматических киков")
@@ -1432,7 +1451,7 @@ async def check_live_streams():
             url_list_of_channels = SDI.get_settings(server_id, "streams", "streaming_channels")
             if len(url_list_of_channels) > 0:
                 if config["debug"] == True:
-                    print(f'Список каналов на проверку для сервера {server_id}: {url_list_of_channels} \n\n')
+                    print(f'Список каналов на проверку для сервера {server_id}: {url_list_of_channels} \n')
                 post_to_channel: int = SDI.get_settings(server_id, "streams", "options", "post_chid")
                 await run_check_for_list(url_list_of_channels, post_to_channel)
             else:

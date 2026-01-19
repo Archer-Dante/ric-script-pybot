@@ -485,7 +485,7 @@ async def cmd_daily(ctx):
 @discord.ext.commands.guild_only()
 async def cmd_join(interaction: discord.Interaction):
     if interaction.user.voice is None:
-        await hybrid_cmd_router("Вас нет ни в одном голосовом канале.")
+        await hybrid_cmd_router(interaction, f"Вас нет ни в одном голосовом канале.", ephemeral=True)
         return
 
     channel = interaction.user.voice.channel
@@ -496,7 +496,7 @@ async def cmd_join(interaction: discord.Interaction):
     else:
         await channel.connect()
 
-    await hybrid_cmd_router(f"✅ Вхожу в {channel.name}")
+    await hybrid_cmd_router(interaction, f"Вхожу в {channel.name}", ephemeral=True)
 
 
 @bot.hybrid_command(name=CommandsNames.AUTOKICK, description="Настроить систему автоматических киков")

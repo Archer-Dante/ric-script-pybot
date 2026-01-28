@@ -46,7 +46,7 @@ headers = {
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
 }
 
-bot = commands.Bot(command_prefix="рик", intents=discord.Intents.all())
+bot = commands.Bot(command_prefix="!/", intents=discord.Intents.all())
 print("Версия discordpy: ", discord.__version__)
 
 
@@ -363,7 +363,7 @@ class ServerDataInterface:
 
 SDI = ServerDataInterface  # сокращённый вариант
 country_flags = CodeFlagConverter()
-
+background_tasks = {}
 
 class TranslationModal(Modal):
 
@@ -382,7 +382,7 @@ class TranslationModal(Modal):
         await interaction.response.send_message("blabla", ephemeral=True)
 
 
-async def hybrid_cmd_router(ctx_or_msg, reply, ephemeral=None):
+async def hybrid_cmd_router(ctx_or_msg, reply, ephemeral=None, allowed_mentions=None):
     embed = discord.Embed(
         description=reply,
         color=0xAC0000
@@ -394,13 +394,13 @@ async def hybrid_cmd_router(ctx_or_msg, reply, ephemeral=None):
     msg_obj = None
     try:
         if type(ctx_or_msg) is discord.ext.commands.context.Context:
-            msg_obj = await ctx_or_msg.send(embed=embed)
+            msg_obj = await ctx_or_msg.send(embed=embed, allowed_mentions=allowed_mentions)
         elif type(ctx_or_msg) is discord.message.Message:
-            msg_obj = await ctx_or_msg.channel.send(embed=embed)
+            msg_obj = await ctx_or_msg.channel.send(embed=embed, allowed_mentions=allowed_mentions)
         elif type(ctx_or_msg) is discord.interactions.Interaction:
-            msg_obj = await ctx_or_msg.response.send_message(embed=embed, ephemeral=ephemeral)
+            msg_obj = await ctx_or_msg.response.send_message(embed=embed, ephemeral=ephemeral, allowed_mentions=allowed_mentions)
         elif type(ctx_or_msg) is discord.channel.TextChannel:
-            msg_obj = await ctx_or_msg.send(embed=embed)
+            msg_obj = await ctx_or_msg.send(embed=embed, allowed_mentions=allowed_mentions)
         else:
             raise Exception
     except Exception as e:
@@ -481,14 +481,47 @@ async def cmd_daily(ctx):
     await ctx.send("Daily yet not implemented! Stay tuned!!")
 
 
-@bot.tree.command(name="join", description="Зайти в голосовой чат")
-@discord.ext.commands.guild_only()
-async def cmd_join(interaction: discord.Interaction):
-    if interaction.user.voice is None:
-        await hybrid_cmd_router(interaction, f"Вас нет ни в одном голосовом канале.", ephemeral=True)
-        return
+@bot.tree.command(name="count", description="Посчитать...")
+@app_commands.describe(who="Что посчитать")
+@app_commands.choices(who=[
+    app_commands.Choice(name="Members", value="members"),
+    app_commands.Choice(name="Gayness", value="gayness"),
+])
+async def count_command(interaction: discord.Interaction, who: str, role: discord.Role = None):
+    if who == "members":
+        if role == None:
+            await hybrid_cmd_router(interaction, f"Укажите роль которую хотите посчитать.")
+        else:
+            # await hybrid_cmd_router(interaction, f"Всего {role.name}: {len(role.members)}")
+            response: str = f"Всего <@&{role.id}>: **{len(role.members)}**\n\n"
+            order = 0
+            for member in role.members:
+                response += str(order+1) + f". <@{member.id}> \n"
+            await hybrid_cmd_router(interaction, f"{response}", allowed_mentions=discord.AllowedMentions.none())
 
-    channel = interaction.user.voice.channel
+    elif who == "gayness":
+        delta = 0
+        for char in interaction.user.name:
+                delta += ord(char)
+        delta += interaction.user.id
+        result = delta % 101
+        await hybrid_cmd_router(interaction, f"Your gayness is **{result}%**! Good Job!")
+
+
+
+@bot.tree.command(name="join", description="Зайти в голосовой чат")
+@app_commands.describe(channelid="Voice Channel ID")
+@discord.ext.commands.guild_only()
+async def cmd_join(interaction: discord.Interaction, channelid: str = None):
+    if channelid is not None and channelid.strip().isdigit():
+        channel = interaction.guild.get_channel(int(channelid))
+        pass
+    else:
+        if interaction.user.voice is None:
+            await hybrid_cmd_router(interaction, f"Вас нет ни в одном голосовом канале.", ephemeral=True)
+            return
+        channel = interaction.user.voice.channel
+
     vc = interaction.guild.voice_client
 
     if vc:
@@ -498,6 +531,68 @@ async def cmd_join(interaction: discord.Interaction):
 
     await hybrid_cmd_router(interaction, f"Вхожу в {channel.name}", ephemeral=True)
 
+@bot.tree.command(name="playsound", description="Воспроизводить аудио")
+@app_commands.describe(playlist="Название плейлиста")
+@discord.ext.commands.guild_only()
+async def cmd_join(interaction: discord.Interaction, playlist: str = None):
+    vc = interaction.guild.voice_client
+    if not vc:
+        await hybrid_cmd_router(interaction, f"Бот не в голосовом канале. Сначала используйте /join.", ephemeral=True)
+        return
+
+    if interaction.guild.id in background_tasks and not background_tasks[interaction.guild.id].done():
+        await hybrid_cmd_router(interaction, f"Воспроизведение уже запущено!", ephemeral=True)
+        return
+
+    task = asyncio.create_task(play_random_sound_loop(vc))
+    background_tasks[interaction.guild.id] = task
+
+    await hybrid_cmd_router(interaction, f"Начинаю проигрывать случайные звуки!", ephemeral=True)
+
+
+@bot.tree.command(name="stop", description="Остановить воспроизведение")
+async def cmd_stop(interaction: discord.Interaction):
+    guild_id = interaction.guild.id
+    vc = interaction.guild.voice_client
+
+    if guild_id in background_tasks:
+        background_tasks[guild_id].cancel()
+        del background_tasks[guild_id]
+
+    if not vc:
+        await hybrid_cmd_router(interaction, f"Бот не был в голосовом чате.", ephemeral=True)
+
+async def play_random_sound_loop(vc: discord.VoiceClient):
+    while True:
+        try:
+            import random
+            delay = random.randint(1, 1800)
+            await asyncio.sleep(delay)
+
+            if not vc or not vc.is_connected():
+                break
+
+            AUDIO_FOLDER = "playlists/_native/goose"
+            files = [f for f in os.listdir(AUDIO_FOLDER) if f.endswith(('.mp3', '.wav', '.ogg'))]
+            if not files:
+                print("Нет аудиофайлов!")
+                break
+
+            if vc.is_playing():
+                continue
+
+            sound_path = os.path.join(AUDIO_FOLDER, random.choice(files))
+            vc.play(discord.FFmpegPCMAudio(sound_path))
+            print(f'С задержкой {delay} был воспроизведён звук: {sound_path}')
+
+            while vc.is_playing():
+                await asyncio.sleep(0.5)
+
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            print(f"Ошибка в play loop: {e}")
+            break
 
 @bot.hybrid_command(name=CommandsNames.AUTOKICK, description="Настроить систему автоматических киков")
 @discord.ext.commands.guild_only()

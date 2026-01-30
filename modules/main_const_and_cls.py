@@ -56,8 +56,10 @@ class CommandsNames:
                 f'- /playsound - воспроизводить случайные звуки в голосовом канале\n'
                 f'\n'
                 f'- /count members @role - перечислить людей у которых есть данная роль\n'
-                f'- /count gayness - узнать свою gayness\n'
-                f'')
+                f'- /gayness @member - узнать свою gayness или кого-то другого\n'
+                f'\n'
+                f'Все документация, вопросы и предложения:\n'
+                f'https://discord.gg/BuqngSncdm')
 
 
 

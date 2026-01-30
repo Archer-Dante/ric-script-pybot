@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import io
 import re
 import typing
@@ -15,7 +16,7 @@ from discord.ext.commands.view import StringView
 from discord.ui import Modal, TextInput
 from dotenv import load_dotenv
 from modules.patches import datetime
-from datetime import date
+from datetime import date, timedelta
 import time
 from modules.file_manager import FileAction  # импорт своего класса по работе с файлами
 from modules.lang_traslation import translate, CodeFlagConverter
@@ -146,6 +147,7 @@ class ServerDataInterface:
                 cfg_branch = cfg_branch[value]
             else:
                 # print(f'Значение {value} не найдено в {cfg_branch}')
+                return None
                 pass
         return cfg_branch
 
@@ -164,6 +166,8 @@ class ServerDataInterface:
                     cfg_branch[subbranch] = changing_value
                     # print(cfg_branch[subbranch])
                 else:  # просто расширяем путь дальше и вглубь вложений
+                    if subbranch not in cfg_branch or not isinstance(cfg_branch[subbranch], dict):
+                        cfg_branch[subbranch] = {}
                     cfg_branch = cfg_branch[subbranch]
                     # print(cfg_branch)
         except Exception as e:
@@ -481,11 +485,193 @@ async def cmd_daily(ctx):
     await ctx.send("Daily yet not implemented! Stay tuned!!")
 
 
+@bot.tree.command(name="settings", description="Некоторые настройки")
+@app_commands.describe(award="Выдача авто-награды ролью")
+@app_commands.choices(award=[
+    app_commands.Choice(name="gayness-100-award-role", value="gayness-100"),
+    app_commands.Choice(name="gayness-0-award-role", value="gayness-0"),
+])
+async def count_command(interaction: discord.Interaction, award: str, role: discord.Role):
+    match award:
+        case "award-100":
+            SDI.set_settings(interaction.guild.id, role.id, "awards", "gayness-100")
+            await hybrid_cmd_router(interaction, f"Роль <@&{role.id}> теперь выдаваться всем в награду за гейство на 100%!",
+                                    allowed_mentions=discord.AllowedMentions.none())
+        case "award-0":
+            SDI.set_settings(interaction.guild.id, role.id, "awards", "gayness-0")
+            await hybrid_cmd_router(interaction, f"Роль <@&{role.id}> теперь выдаваться всем в награду всем натуралам за 0% гейства!",
+                                    allowed_mentions=discord.AllowedMentions.none())
+        case _:
+            await hybrid_cmd_router(interaction, f"❌ Что-то пошло не так, но... вы пытались ¯\\_(ツ)_/¯")
+    return
+
+
+@bot.tree.command(name="gayness", description="Рассчитать ♂️gayness♂️")
+@app_commands.describe(member="Рассчитать кому-то другому?")
+async def count_command(interaction: discord.Interaction, member: discord.Member = None):
+
+    response: str = ""
+
+    last_check = SDI.get_userdata(interaction.guild.id, interaction.user.id, 'game_gayness', 'last_check')
+    last_result = SDI.get_userdata(interaction.guild.id, interaction.user.id, 'game_gayness', 'last_result')
+    if (member is None or interaction.user.id == member.id) and last_check == date.today().isoformat():
+        response += (f"Вы уже смотрели на свой флекс сегодня 💪\n"
+                    f"Ваша ♂♂️Gayness♂️️ была равна **{last_result}%**\n"
+                    f"Приходи завтра!")
+        await hybrid_cmd_router(interaction, f"{response}", allowed_mentions=discord.AllowedMentions.none())
+        return
+
+    # основной код с расчётами
+    cur_date = date.today()
+    yes_date = date.today() - timedelta(days=1)
+
+    seed = member.id if member is not None else interaction.user.id
+    # cur_rainbowness = hash(seed + cur_date.year * cur_date.month * cur_date.day) % 101
+    # yes_rainbowness = hash(seed + yes_date.year * yes_date.month * yes_date.day) % 101
+
+    cur_seed = f"{interaction.guild.id}:{seed}:{cur_date.isoformat()}"
+    cur_rainbowness = int(hashlib.md5(cur_seed.encode()).hexdigest()[:8], 16) % 101
+    yes_seed = f"{interaction.guild.id}:{seed}:{yes_date.isoformat()}"
+    yes_rainbowness = int(hashlib.md5(yes_seed.encode()).hexdigest()[:8], 16) % 101
+
+    response = f"Гейскость <@{member.id}>" if member is not None else "Ваша ♂️Gayness♂️"
+    response += f" сегодня **{cur_rainbowness}%**\n"
+
+    print(f"\bПользователь {interaction.user.name} на сервере {interaction.guild.name} проверил ♂️gayness♂️ = {cur_rainbowness}%\n")
+
+    import random
+    if cur_rainbowness == 0:
+        smile = random.choice(['🥂', '🤹', '👀'])
+        response += random.choice(["Ого, да вы сегодня натурал! ",
+                                   "Гейскость как ветром сдуло!",
+                                   "Сегодня вы натурал 100% натуральный!",
+                                   "О нет, мы его теряем! Срочно несите его в ♂GYM♂ !",
+                                   "Сегодня НАТУРАЛьно выходной"])
+        response += f" {smile}"
+        # если есть награды ролями, то выдать награду ролью
+        award_role = SDI.get_settings(interaction.guild.id, "awards", "gayness-0")
+        print(f"Считанная роль: {award_role} : {type(award_role)}")
+
+        if member is None and award_role is not None:
+            role = interaction.guild.get_role(int(award_role))
+            await interaction.user.add_roles(role)
+            if SDI.get_userdata(interaction.guild.id, interaction.user.id, 'game_gayness', 'gayness_top') is None:
+                response += f"\n\nПолучена роль-награда - <@&{role.id}>"
+            else:
+                response += f"\n\nПолучена роль-награда - <@&{role.id}>"
+                i: int = SDI.get_userdata(interaction.guild.id, interaction.user.id, 'game_gayness', 'top_times') + 1
+                response += f"\n\nВы достигли пика натуральности уже {i} раз и неуловимы для гачистов! 🥷"
+        pass
+    elif cur_rainbowness == 100:
+        smile = random.choice(['🌈', '🏅', '🎂'])
+        response += random.choice(["Настолько гейский, что как заново родился! ",
+                                   "Рождение гачимученника! Поздравляем!",
+                                   "100% гейства, 0% неверных решений!",
+                                   "В эту секунду само небо позавидовало вашей голубизне!",
+                                   "Настоящий ♂️Dungeon Master♂️ этих земель"])
+        response += f" {smile}"
+        # если есть награды ролями, то выдать награду ролью
+        award_role = SDI.get_settings(interaction.guild.id, ["awards", "gayness-100"])
+        if member is None and award_role is not None:
+            role = interaction.guild.get_role(int(award_role))
+            await interaction.user.add_roles(role)
+            if SDI.get_userdata(interaction.guild.id, interaction.user.id, 'game_gayness', 'gayness_low') is None:
+                response += f"\n\nПолучена роль-награда - <@&{role.id}>"
+            else:
+                i: int = SDI.get_userdata(interaction.guild.id, interaction.user.id, 'game_gayness', 'low_times') + 1
+                response += f"\n\nВы достигли пика мужественности уже {i} раз, совершенство не предел! 💦"
+        pass
+    elif cur_rainbowness > yes_rainbowness:
+        smile = random.choice(['🌈', '💪', '🫂', '🐓', '🍆', '🍑', '🔥', '✨', '🤼', '💞', '💖', '❤️‍🔥', '♂️','💅','🍌'])
+        response += f"Это на **{cur_rainbowness-yes_rainbowness}%** больше, чем вчера! "
+        response += random.choice(["Так держать!", "Вот это результат!", "Мощь!", "Ух!", "Not bad!", "Dude!"])
+        response += f" {smile}"
+    elif cur_rainbowness < yes_rainbowness:
+        smile = random.choice(['❤️‍🩹', '😱', '🤏', '〽️', '👺', '🥺', '🧐', '🗿', '📉', '💔'])
+        response += f"Это на **{yes_rainbowness-cur_rainbowness}%** меньше, чем вчера... "
+        response += random.choice(["О, нет!", "Кошмар!", "Не расстраивайся!", "Всё впереди!", "Просто день такой!"])
+        response += f" {smile}"
+    elif cur_rainbowness == yes_rainbowness:
+        smile = random.choice(['🤟','🌛','🌶️','🫶'])
+        response += f"Это столько же сколько и в прошлый раз!\n"
+        response += random.choice(["Постоянство - признак мастерства!", "Гейство по-робингудски!", "Стабильность - тоже круто!", "Неизменное качество!"])
+        response += f" {smile}"
+
+    # ----------------------- Блок сбора статистики ----------------------
+    # last_check - когда последний раз была проверка
+    # last_result - какой последний результат
+    # gayness_top - наивысшее значение за всё время
+    # gayness_low - наименьшее значение за всё время
+    # top_times - как много раз было 100
+    # low_times - как много раз было 0
+    # last_top_date - когда последний раз было 100
+    # last_low_date - когда последний раз было 0
+    # times - сколько всего проверок было сделано
+
+    if member is None or interaction.user.id == member.id:
+
+        SDI.set_userdata(interaction.guild.id, interaction.user.id, date.today().isoformat(), 'game_gayness', 'last_check')
+        SDI.set_userdata(interaction.guild.id, interaction.user.id, cur_rainbowness, 'game_gayness', 'last_result')
+
+        top = SDI.get_userdata(interaction.guild.id, interaction.user.id, 'game_gayness', 'gayness_top')
+        low = SDI.get_userdata(interaction.guild.id, interaction.user.id, 'game_gayness', 'gayness_low')
+        top_times = SDI.get_userdata(interaction.guild.id, interaction.user.id, 'game_gayness', 'top_times')
+        low_times = SDI.get_userdata(interaction.guild.id, interaction.user.id, 'game_gayness', 'low_times')
+        last_top_date = SDI.get_userdata(interaction.guild.id, interaction.user.id, 'game_gayness', 'last_date_top')
+        last_low_date = SDI.get_userdata(interaction.guild.id, interaction.user.id, 'game_gayness', 'last_low_date')
+
+        if top is None:
+            top = cur_rainbowness
+            SDI.set_userdata(interaction.guild.id, interaction.user.id, top, 'game_gayness', 'gayness_top')
+            SDI.set_userdata(interaction.guild.id, interaction.user.id, date.today().isoformat(), 'game_gayness', 'last_top_date')
+            SDI.set_userdata(interaction.guild.id, interaction.user.id, 0, 'game_gayness', 'top_times')
+        if low is None:
+            low = cur_rainbowness
+            SDI.set_userdata(interaction.guild.id, interaction.user.id, low, 'game_gayness', 'gayness_low')
+            SDI.set_userdata(interaction.guild.id, interaction.user.id, date.today().isoformat(), 'game_gayness', 'last_low_date')
+            SDI.set_userdata(interaction.guild.id, interaction.user.id, 0, 'game_gayness', 'low_times')
+
+        if cur_rainbowness > top:
+            SDI.set_userdata(interaction.guild.id, interaction.user.id, cur_rainbowness, 'game_gayness', 'gayness_top')
+        if cur_rainbowness < low:
+            SDI.set_userdata(interaction.guild.id, interaction.user.id, cur_rainbowness, 'game_gayness', 'gayness_low')
+        if cur_rainbowness == 100:
+            SDI.set_userdata(interaction.guild.id, interaction.user.id, date.today().isoformat(), 'game_gayness', 'last_top_date')
+            if top_times is None: top_times = 0
+            SDI.set_userdata(interaction.guild.id, interaction.user.id, top_times + 1, 'game_gayness', 'top_times')
+            if last_top_date == date.today().isoformat():
+                SDI.set_userdata(interaction.guild.id, interaction.user.id, date.today().isoformat(), 'game_gayness', 'last_top_date')
+        if cur_rainbowness == 0:
+            SDI.set_userdata(interaction.guild.id, interaction.user.id, date.today().isoformat(), 'game_gayness', 'last_low_date')
+            if low_times is None: low_times = 0
+            SDI.set_userdata(interaction.guild.id, interaction.user.id, low_times + 1, 'game_gayness', 'low_times')
+            if last_low_date == date.today().isoformat():
+                SDI.set_userdata(interaction.guild.id, interaction.user.id, date.today().isoformat(), 'game_gayness', 'last_low_date')
+
+
+        times = SDI.get_userdata(interaction.guild.id, interaction.user.id, 'game_gayness', 'times')
+        if times is None:
+            times = 1
+            SDI.set_userdata(interaction.guild.id, interaction.user.id, times, 'game_gayness', 'times')
+        else:
+            SDI.set_userdata(interaction.guild.id, interaction.user.id, times + 1, 'game_gayness', 'times')
+    # --------------------- Конец сбора статистики ----------------------
+
+    await hybrid_cmd_router(interaction, f"{response}", allowed_mentions=discord.AllowedMentions.none())
+
+    # ниже код прогнозирования % с детерминированным значением, не используется
+    # print(hash(interaction.user.id))
+    # cur_date = date.today()
+    # end_of_year = date(date.today().year, 12, 31)
+    # while cur_date < end_of_year:
+    #     cur_date += timedelta(days=1)
+    #     print(f"{cur_date} : {(hash(interaction.user.id + cur_date.year * cur_date.month * cur_date.day)) % 101}%")
+
+
 @bot.tree.command(name="count", description="Посчитать...")
 @app_commands.describe(who="Что посчитать")
 @app_commands.choices(who=[
     app_commands.Choice(name="Members", value="members"),
-    app_commands.Choice(name="Gayness", value="gayness"),
 ])
 async def count_command(interaction: discord.Interaction, who: str, role: discord.Role = None):
     if who == "members":
@@ -499,13 +685,13 @@ async def count_command(interaction: discord.Interaction, who: str, role: discor
                 response += str(order+1) + f". <@{member.id}> \n"
             await hybrid_cmd_router(interaction, f"{response}", allowed_mentions=discord.AllowedMentions.none())
 
-    elif who == "gayness":
-        delta = 0
-        for char in interaction.user.name:
-                delta += ord(char)
-        delta += interaction.user.id
-        result = delta % 101
-        await hybrid_cmd_router(interaction, f"Your gayness is **{result}%**! Good Job!")
+    # elif who == "gayness":
+    #     delta = 0
+    #     for char in interaction.user.name:
+    #             delta += ord(char)
+    #     delta += interaction.user.id
+    #     result = delta % 101
+    #     await hybrid_cmd_router(interaction, f"Your gayness is **{result}%**! Good Job!")
 
 
 

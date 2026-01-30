@@ -719,8 +719,12 @@ async def cmd_join(interaction: discord.Interaction, channelid: str = None):
 
 @bot.tree.command(name="playsound", description="Воспроизводить аудио")
 @app_commands.describe(playlist="Название плейлиста")
+@app_commands.choices(playlist=[
+    app_commands.Choice(name="Zomboid", value="zomboid"),
+    app_commands.Choice(name="Goose", value="goose"),
+])
 @discord.ext.commands.guild_only()
-async def cmd_join(interaction: discord.Interaction, playlist: str = None):
+async def cmd_join(interaction: discord.Interaction, playlist: str = None, min: str = None, max: str = None):
     vc = interaction.guild.voice_client
     if not vc:
         await hybrid_cmd_router(interaction, f"Бот не в голосовом канале. Сначала используйте /join.", ephemeral=True)
@@ -730,7 +734,7 @@ async def cmd_join(interaction: discord.Interaction, playlist: str = None):
         await hybrid_cmd_router(interaction, f"Воспроизведение уже запущено!", ephemeral=True)
         return
 
-    task = asyncio.create_task(play_random_sound_loop(vc))
+    task = asyncio.create_task(play_random_sound_loop(vc, playlist, min, max))
     background_tasks[interaction.guild.id] = task
 
     await hybrid_cmd_router(interaction, f"Начинаю проигрывать случайные звуки!", ephemeral=True)
@@ -748,17 +752,24 @@ async def cmd_stop(interaction: discord.Interaction):
     if not vc:
         await hybrid_cmd_router(interaction, f"Бот не был в голосовом чате.", ephemeral=True)
 
-async def play_random_sound_loop(vc: discord.VoiceClient):
+async def play_random_sound_loop(vc: discord.VoiceClient, playlist, min, max):
     while True:
         try:
             import random
-            delay = random.randint(1, 1800)
+            if min is None: min = 1
+            if max is None: max = 1800
+            delay = random.randint(int(min), int(max))
             await asyncio.sleep(delay)
 
             if not vc or not vc.is_connected():
                 break
 
-            AUDIO_FOLDER = "playlists/_native/goose"
+            AUDIO_FOLDER: str = ""
+            if playlist is None:
+                AUDIO_FOLDER = "playlists/_native/goose"
+            elif playlist == "zomboid":
+                AUDIO_FOLDER = "playlists/_native/zomboid"
+
             files = [f for f in os.listdir(AUDIO_FOLDER) if f.endswith(('.mp3', '.wav', '.ogg'))]
             if not files:
                 print("Нет аудиофайлов!")

@@ -1095,7 +1095,7 @@ async def cmd_toggle(ctx, setting: typing.Literal["notify-leave", "notify-stream
 @commands.cooldown(1, 10, BucketType.user)
 @discord.ext.commands.guild_only()
 async def cmd_bots_kicked(ctx):
-    reply = f'Всего ботов наказано: {SDI.get_stats(ctx.guild.id, 'autokick_count')}'
+    reply = f"Всего ботов наказано: {SDI.get_stats(ctx.guild.id, 'autokick_count')}"
     await hybrid_cmd_router(ctx, reply)
 
 
@@ -1139,8 +1139,8 @@ async def cmd_embedding(ctx, content: str, title: str = None, color=None, image:
     except Exception as e:
         print(e)
 
-    msg = f'{content.replace("\\n", "\n")}'
-    msg = f'{msg.replace("\\\\\\", "\n")}'
+    msg = content.replace("\\n", "\n")
+    msg = msg.replace("\\\\\\", "\n")
 
     embed = discord.Embed()
 
@@ -1184,8 +1184,8 @@ async def cmd_embedding(ctx, message: str, content: str = None, title: str = Non
     except Exception as e:
         print(e)
 
-    msg = f'{content.replace("\\n", "\n")}'
-    msg = f'{msg.replace("\\\\\\", "\n")}'
+    msg = content.replace("\\n", "\n")
+    msg = msg.replace("\\\\\\", "\n")
 
     if color is not None:
         embed.colour = discord.Colour.from_rgb(*(await hex_to_rgb(color)))
@@ -1599,11 +1599,13 @@ async def on_raw_reaction_add(reaction):  # должно работать даж
     #     f'{Bcolors.BOLD}Тело сообщения:{Bcolors.ENDC}\n{Bcolors.OKCYAN}{message_bdy}{Bcolors.ENDC}\n'
     #     f'{Bcolors.BOLD}Автор сообщения: {Bcolors.ENDC}{message_id.author.display_name} ({message_id.author.global_name})')
 
+    resub = re.sub(r"\s*\r?\n\s*", " ", message_bdy[0:99])
+
     print(f'{datetime.now()} | {Bcolors.BOLD}{Bcolors.OKGREEN}{reaction.member.display_name}{Bcolors.ENDC} '
           f'поставил <:{reaction.emoji.name}:{reaction.emoji.id}> '
           f'на сообщение от {Bcolors.BOLD}{message_id.author.display_name} ({message_id.author.global_name}){Bcolors.ENDC}'
           f'\n'
-          f'{datetime.now()} | Превью: {Bcolors.OKCYAN}{re.sub(r"\s*\r?\n\s*", " ", message_bdy[0:99])}...{Bcolors.ENDC}'
+          f'{datetime.now()} | Превью: {Bcolors.OKCYAN}{resub}...{Bcolors.ENDC}'
           f'\n'
           f'{datetime.now()} | Линк: https://discord.com/channels/{reaction.guild_id}/{reaction.channel_id}/{reaction.message_id}')
 

@@ -759,6 +759,7 @@ async def play_random_sound_loop(vc: discord.VoiceClient, playlist, min, max):
             if min is None: min = 1
             if max is None: max = 1800
             delay = random.randint(int(min), int(max))
+            print(f'Следующий звук будет воспроизведен через {(delay/60):.2f} мин')
             await asyncio.sleep(delay)
 
             if not vc or not vc.is_connected():
@@ -766,6 +767,8 @@ async def play_random_sound_loop(vc: discord.VoiceClient, playlist, min, max):
 
             AUDIO_FOLDER: str = ""
             if playlist is None:
+                AUDIO_FOLDER = "playlists/_native/goose"
+            elif playlist == "goose":
                 AUDIO_FOLDER = "playlists/_native/goose"
             elif playlist == "zomboid":
                 AUDIO_FOLDER = "playlists/_native/zomboid"
@@ -779,7 +782,7 @@ async def play_random_sound_loop(vc: discord.VoiceClient, playlist, min, max):
                 continue
 
             sound_path = os.path.join(AUDIO_FOLDER, random.choice(files))
-            vc.play(discord.FFmpegPCMAudio(sound_path))
+            vc.play(discord.FFmpegPCMAudio(sound_path, options="-af volume=0.7"))
             print(f'С задержкой {delay} был воспроизведён звук: {sound_path}')
 
             while vc.is_playing():

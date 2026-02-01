@@ -782,7 +782,7 @@ async def play_random_sound_loop(vc: discord.VoiceClient, playlist, min, max):
                 continue
 
             sound_path = os.path.join(AUDIO_FOLDER, random.choice(files))
-            vc.play(discord.FFmpegPCMAudio(sound_path, options="-af volume=0.7"))
+            vc.play(discord.FFmpegPCMAudio(sound_path, options="-af volume=0.85"))
             print(f'С задержкой {delay} был воспроизведён звук: {sound_path}')
 
             while vc.is_playing():

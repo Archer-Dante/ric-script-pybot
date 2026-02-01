@@ -516,7 +516,7 @@ async def count_command(interaction: discord.Interaction, member: discord.Member
     last_result = SDI.get_userdata(interaction.guild.id, interaction.user.id, 'game_gayness', 'last_result')
     if (member is None or interaction.user.id == member.id) and last_check == date.today().isoformat():
         response += (f"Вы уже смотрели на свой флекс сегодня 💪\n"
-                    f"Ваша ♂♂️Gayness♂️️ была равна **{last_result}%**\n"
+                    f"Ваша ♂️Gayness♂️️ была равна **{last_result}%**\n"
                     f"Приходи завтра!")
         await hybrid_cmd_router(interaction, f"{response}", allowed_mentions=discord.AllowedMentions.none())
         return

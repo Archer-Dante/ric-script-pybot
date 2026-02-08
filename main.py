@@ -47,7 +47,7 @@ headers = {
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
 }
 
-bot = commands.Bot(command_prefix="!/", intents=discord.Intents.all())
+bot = commands.Bot(command_prefix="!/", intents=discord.Intents.all(), heartbeat_timeout=120.0)
 print("Версия discordpy: ", discord.__version__)
 
 
@@ -713,7 +713,7 @@ async def cmd_join(interaction: discord.Interaction, channelid: str = None):
     if vc:
         await vc.move_to(channel)
     else:
-        await channel.connect()
+        await channel.connect(reconnect=True, timeout=30)
 
     await hybrid_cmd_router(interaction, f"Вхожу в {channel.name}", ephemeral=True)
 

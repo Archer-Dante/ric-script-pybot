@@ -408,7 +408,7 @@ async def hybrid_cmd_router(ctx_or_msg, reply, ephemeral=None, allowed_mentions=
         else:
             raise Exception
     except Exception as e:
-        print(f'Ошибка гибридной обёртки: {e}')
+        print(f'Ошибка гибридной обёртки: {e}\n')
     return msg_obj
 
 

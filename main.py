@@ -511,7 +511,7 @@ async def settings_command(interaction: discord.Interaction, award: str, role: d
 async def gayness_command(interaction: discord.Interaction, member: discord.Member = None):
 
     # даёт больше времени на ответ в случае проблем или высокой нагрузки
-    interaction.response.defer()
+    # await interaction.response.defer()
 
     response: str = ""
 

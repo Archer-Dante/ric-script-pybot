@@ -491,7 +491,7 @@ async def cmd_daily(ctx):
     app_commands.Choice(name="gayness-100-award-role", value="gayness-100"),
     app_commands.Choice(name="gayness-0-award-role", value="gayness-0"),
 ])
-async def count_command(interaction: discord.Interaction, award: str, role: discord.Role):
+async def settings_command(interaction: discord.Interaction, award: str, role: discord.Role):
     match award:
         case "award-100":
             SDI.set_settings(interaction.guild.id, role.id, "awards", "gayness-100")
@@ -508,7 +508,7 @@ async def count_command(interaction: discord.Interaction, award: str, role: disc
 
 @bot.tree.command(name="gayness", description="Рассчитать ♂️gayness♂️")
 @app_commands.describe(member="Рассчитать кому-то другому?")
-async def count_command(interaction: discord.Interaction, member: discord.Member = None):
+async def gayness_command(interaction: discord.Interaction, member: discord.Member = None):
 
     response: str = ""
 
@@ -571,7 +571,7 @@ async def count_command(interaction: discord.Interaction, member: discord.Member
                                    "Настоящий ♂️Dungeon Master♂️ этих земель"])
         response += f" {smile}"
         # если есть награды ролями, то выдать награду ролью
-        award_role = SDI.get_settings(interaction.guild.id, ["awards", "gayness-100"])
+        award_role = SDI.get_settings(interaction.guild.id, "awards", "gayness-100")
         if member is None and award_role is not None:
             role = interaction.guild.get_role(int(award_role))
             await interaction.user.add_roles(role)
@@ -679,11 +679,14 @@ async def count_command(interaction: discord.Interaction, who: str, role: discor
             await hybrid_cmd_router(interaction, f"Укажите роль которую хотите посчитать.")
         else:
             # await hybrid_cmd_router(interaction, f"Всего {role.name}: {len(role.members)}")
-            response: str = f"Всего <@&{role.id}>: **{len(role.members)}**\n\n"
+            response: str = f"> **Всего имеющих <@&{role.id}>: {len(role.members)}**\n\n"
             order = 0
             for member in role.members:
-                response += str(order+1) + f". <@{member.id}> \n"
-            await hybrid_cmd_router(interaction, f"{response}", allowed_mentions=discord.AllowedMentions.none())
+                response += f"-# " + str(order+1) + f". <@{member.id}> \n"
+                order += 1
+            # await hybrid_cmd_router(interaction, f"{response}", allowed_mentions=discord.AllowedMentions.none())
+            # await interaction.channel.send(response)
+            await interaction.response.send_message(response)
 
     # elif who == "gayness":
     #     delta = 0

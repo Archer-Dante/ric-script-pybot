@@ -510,6 +510,9 @@ async def settings_command(interaction: discord.Interaction, award: str, role: d
 @app_commands.describe(member="Рассчитать кому-то другому?")
 async def gayness_command(interaction: discord.Interaction, member: discord.Member = None):
 
+    # даёт больше времени на ответ в случае проблем или высокой нагрузки
+    interaction.response.defer()
+
     response: str = ""
 
     last_check = SDI.get_userdata(interaction.guild.id, interaction.user.id, 'game_gayness', 'last_check')

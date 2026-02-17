@@ -689,7 +689,7 @@ async def count_command(interaction: discord.Interaction, who: str, role: discor
                 order += 1
             # await hybrid_cmd_router(interaction, f"{response}", allowed_mentions=discord.AllowedMentions.none())
             # await interaction.channel.send(response)
-            await interaction.response.send_message(response)
+            await interaction.response.send_message(response, allowed_mentions=discord.AllowedMentions.none())
 
     # elif who == "gayness":
     #     delta = 0

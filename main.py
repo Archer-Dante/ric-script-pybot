@@ -537,7 +537,7 @@ async def gayness_command(interaction: discord.Interaction, member: discord.Memb
     yes_seed = f"{interaction.guild.id}:{seed}:{yes_date.isoformat()}"
     yes_rainbowness = int(hashlib.md5(yes_seed.encode()).hexdigest()[:8], 16) % 101
 
-    response = f"Гейскость <@{member.id}>" if member is not None else "Ваша ♂️Gayness♂️"
+    response = f"Гейскость <@{member.id}>" if member is not None and interaction.user.id != member.id else "Ваша ♂️Gayness♂️"
     response += f" сегодня **{cur_rainbowness}%**\n"
 
     print(f"\bПользователь {interaction.user.name} на сервере {interaction.guild.name} проверил ♂️gayness♂️ = {cur_rainbowness}%\n")
@@ -555,14 +555,14 @@ async def gayness_command(interaction: discord.Interaction, member: discord.Memb
         award_role = SDI.get_settings(interaction.guild.id, "awards", "gayness-0")
         print(f"Считанная роль: {award_role} : {type(award_role)}")
 
-        if member is None and award_role is not None:
+        if member is None and interaction.user.id != member.id and award_role is not None:
             role = interaction.guild.get_role(int(award_role))
             await interaction.user.add_roles(role)
-            if SDI.get_userdata(interaction.guild.id, interaction.user.id, 'game_gayness', 'gayness_top') is None:
+            if SDI.get_userdata(interaction.guild.id, interaction.user.id, 'game_gayness', 'gayness_low') is None:
                 response += f"\n\nПолучена роль-награда - <@&{role.id}>"
             else:
                 response += f"\n\nПолучена роль-награда - <@&{role.id}>"
-                i: int = SDI.get_userdata(interaction.guild.id, interaction.user.id, 'game_gayness', 'top_times') + 1
+                i: int = SDI.get_userdata(interaction.guild.id, interaction.user.id, 'game_gayness', 'low_times') + 1
                 response += f"\n\nВы достигли пика натуральности уже {i} раз и неуловимы для гачистов! 🥷"
         pass
     elif cur_rainbowness == 100:
@@ -575,14 +575,15 @@ async def gayness_command(interaction: discord.Interaction, member: discord.Memb
         response += f" {smile}"
         # если есть награды ролями, то выдать награду ролью
         award_role = SDI.get_settings(interaction.guild.id, "awards", "gayness-100")
-        if member is None and award_role is not None:
+        if member is None or interaction.user.id != member.id and award_role is not None:
             role = interaction.guild.get_role(int(award_role))
             await interaction.user.add_roles(role)
-            if SDI.get_userdata(interaction.guild.id, interaction.user.id, 'game_gayness', 'gayness_low') is None:
+            if SDI.get_userdata(interaction.guild.id, interaction.user.id, 'game_gayness', 'gayness_top') is None:
                 response += f"\n\nПолучена роль-награда - <@&{role.id}>"
             else:
-                i: int = SDI.get_userdata(interaction.guild.id, interaction.user.id, 'game_gayness', 'low_times') + 1
-                response += f"\n\nВы достигли пика мужественности уже {i} раз, совершенство не предел! 💦"
+                i: int = SDI.get_userdata(interaction.guild.id, interaction.user.id, 'game_gayness', 'top_times') + 1
+                response += f"\n\nВаша общая ♂️gayness♂️ равна **{i * 100}%** !!"
+                response += f"\nВы достигли пика мужественности уже {i} раз, совершенство не предел! 💦"
         pass
     elif cur_rainbowness > yes_rainbowness:
         smile = random.choice(['🌈', '💪', '🫂', '🐓', '🍆', '🍑', '🔥', '✨', '🤼', '💞', '💖', '❤️‍🔥', '♂️','💅','🍌'])

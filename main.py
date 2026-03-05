@@ -701,6 +701,29 @@ async def count_command(interaction: discord.Interaction, who: str, role: discor
     #     await hybrid_cmd_router(interaction, f"Your gayness is **{result}%**! Good Job!")
 
 
+@bot.tree.command(name="names", description="Информация о никнеймах юзера")
+@app_commands.describe(who="Кого осматриваем")
+@app_commands.choices(who=[
+    app_commands.Choice(name="Member", value="member"),
+])
+async def names_command(interaction: discord.Interaction, who: str, user: discord.Member = None):
+    if who == "member":
+        target_id = interaction.user.id if user is None else user.id
+        target_name = interaction.user.nick if user is None else user.nick
+        names: list = SDI.get_userdata(interaction.guild.id, target_id, "statistics", "nicknames")
+        print("имена", names)
+        if names == [] or names is None:
+            SDI.set_userdata(interaction.guild.id, target_id, target_name, "statistics", "nicknames")
+            names = SDI.get_userdata(interaction.guild.id, target_id, "statistics", "nicknames")
+        print("имена", names)
+
+        response: str = f"**Никнеймы пользователя:**\n\n"
+        for name in names:
+            response += f"{name}"
+
+        await hybrid_cmd_router(interaction, response)
+
+
 @bot.tree.command(name="join", description="Зайти в голосовой чат")
 @app_commands.describe(channelid="Voice Channel ID")
 @discord.ext.commands.guild_only()

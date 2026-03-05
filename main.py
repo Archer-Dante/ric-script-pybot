@@ -1707,15 +1707,9 @@ async def on_member_join(member):
 
     if member.name not in SDI.get_userdata(member.guild.id, member.id, "statistics", "nicknames"):
         names: list = SDI.get_userdata(member.guild.id, member.id, "statistics", "nicknames")
-<<<<<<< HEAD
         # print("имена: ", names)
         names.append(member.display_name)
         # print("имена: ", names)
-=======
-        // print("имена: ", names)
-        names.append(member.display_name)
-        // print("имена: ", names)
->>>>>>> 537b9d81f50d47ef5e77ae8c25b0f38ab3f87012
     SDI.set_userdata(member.guild.id, member.id, date.today().isoformat(), "date_joined")
 
 
@@ -1725,15 +1719,9 @@ async def on_member_update(before, after):
         print(before.nick, "|", after.nick)
         if after.nick not in SDI.get_userdata(before.guild.id, before.id, "statistics", "nicknames"):
             names: list = SDI.get_userdata(before.guild.id, before.id, "statistics", "nicknames")
-<<<<<<< HEAD
             # print("имена: ", names)
             names.append(after.display_name)
             # print("имена: ", names)
-=======
-            // print("имена: ", names)
-            names.append(after.display_name)
-            // print("имена: ", names)
->>>>>>> 537b9d81f50d47ef5e77ae8c25b0f38ab3f87012
             SDI.save_cfgs(before.guild.id)
     pass
 

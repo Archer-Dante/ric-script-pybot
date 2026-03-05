@@ -677,7 +677,7 @@ async def gayness_command(interaction: discord.Interaction, member: discord.Memb
 @app_commands.choices(who=[
     app_commands.Choice(name="Members", value="members"),
 ])
-async def count_command(interaction: discord.Interaction, who: str, role: discord.Role = None):
+async def cmd_count(interaction: discord.Interaction, who: str, role: discord.Role = None):
     if who == "members":
         if role == None:
             await hybrid_cmd_router(interaction, f"Укажите роль которую хотите посчитать.")
@@ -702,26 +702,22 @@ async def count_command(interaction: discord.Interaction, who: str, role: discor
 
 
 @bot.tree.command(name="names", description="Информация о никнеймах юзера")
-@app_commands.describe(who="Кого осматриваем")
-@app_commands.choices(who=[
-    app_commands.Choice(name="Member", value="member"),
-])
-async def names_command(interaction: discord.Interaction, who: str, user: discord.Member = None):
-    if who == "member":
-        target_id = interaction.user.id if user is None else user.id
-        target_name = interaction.user.nick if user is None else user.nick
-        names: list = SDI.get_userdata(interaction.guild.id, target_id, "statistics", "nicknames")
-        print("имена", names)
-        if names == [] or names is None:
-            SDI.set_userdata(interaction.guild.id, target_id, target_name, "statistics", "nicknames")
-            names = SDI.get_userdata(interaction.guild.id, target_id, "statistics", "nicknames")
-        print("имена", names)
+async def cmd_names(interaction: discord.Interaction, user: discord.Member = None):
+    target_id = interaction.user.id if user is None else user.id
+    target_name = interaction.user.display_name if user is None else user.display_name
+    # print(target_id, "|", target_name)
+    names: list = SDI.get_userdata(interaction.guild.id, target_id, "statistics", "nicknames")
+    # print("имена", names)
+    if names == [] or names is None:
+        SDI.set_userdata(interaction.guild.id, target_id, [target_name], "statistics", "nicknames")
+        names = SDI.get_userdata(interaction.guild.id, target_id, "statistics", "nicknames")
+    # print("имена", names)
 
-        response: str = f"**Никнеймы пользователя:**\n\n"
-        for name in names:
-            response += f"{name}"
+    response: str = f"**Никнеймы пользователя:**\n\n"
+    for name in names:
+        response += f"{name}\n"
 
-        await hybrid_cmd_router(interaction, response)
+    await hybrid_cmd_router(interaction, response)
 
 
 @bot.tree.command(name="join", description="Зайти в голосовой чат")
@@ -745,6 +741,7 @@ async def cmd_join(interaction: discord.Interaction, channelid: str = None):
         await channel.connect(reconnect=True, timeout=30)
 
     await hybrid_cmd_router(interaction, f"Вхожу в {channel.name}", ephemeral=True)
+
 
 @bot.tree.command(name="playsound", description="Воспроизводить аудио")
 @app_commands.describe(playlist="Название плейлиста")
@@ -1738,15 +1735,21 @@ async def on_member_join(member):
 
 @bot.event
 async def on_member_update(before, after):
-    if before.nick != after.nick and after.nick is not None:
-        print(before.nick, "|", after.nick)
-        if after.nick not in SDI.get_userdata(before.guild.id, before.id, "statistics", "nicknames"):
-            names: list = SDI.get_userdata(before.guild.id, before.id, "statistics", "nicknames")
-            # print("имена: ", names)
+    # по какой-то причине старый и новый юзер-объект содержат в себе одинаковые значения, хотя должны различаться
+    # поэтому до фикса в библиотеке проверяться будет просто на то, что юзер-имена хотя бы есть
+    if before.nick != after.nick or before.display_name is not None or after.display_name is not None:
+        print(f"{datetime.now()} | На сервере [{before.guild.name}] пользователь сменил ник с {before.display_name if before.nick is None else before.nick} на {after.nick if after.nick is not None else after.display_name}\n")
+        names: list = SDI.get_userdata(before.guild.id, before.id, "statistics", "nicknames")
+        if before.nick not in names and before.nick is not None:
+            names.append(before.nick)
+        if after.nick not in names and after.nick is not None:
+            names.append(after.nick)
+        if before.display_name not in names and before.display_name is not None:
+            names.append(before.display_name)
+        if after.display_name not in names and after.display_name is not None:
             names.append(after.display_name)
-            # print("имена: ", names)
-            SDI.save_cfgs(before.guild.id)
-    pass
+        SDI.save_cfgs(before.guild.id)
+
 
 @bot.event
 async def on_member_remove(member):

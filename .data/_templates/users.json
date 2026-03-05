@@ -15,7 +15,7 @@
                         "voice_xp": 0
                 },
                 "social": {
-                        "reputaion": 666,
+                        "reputaion": 0,
                         "rating": 0,
                         "warnings": 0
                 },
@@ -34,7 +34,7 @@
                         ],
                         "voice_time": 0,
                         "behaviour_temp": 0,
-                        "nicknames": ["if someone changes nickname it records here"]
+                        "nicknames": []
                 }
 
         }

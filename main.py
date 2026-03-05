@@ -519,8 +519,8 @@ async def gayness_command(interaction: discord.Interaction, member: discord.Memb
     last_result = SDI.get_userdata(interaction.guild.id, interaction.user.id, 'game_gayness', 'last_result')
     if (member is None or interaction.user.id == member.id) and last_check == date.today().isoformat():
         response += (f"Вы уже смотрели на свой флекс сегодня 💪\n"
-                    f"Ваша ♂️Gayness♂️️ была равна **{last_result}%**\n"
-                    f"Приходи завтра!")
+                     f"Ваша ♂️Gayness♂️️ была равна **{last_result}%**\n"
+                     f"Приходи завтра!")
         await hybrid_cmd_router(interaction, f"{response}", allowed_mentions=discord.AllowedMentions.none())
         return
 
@@ -699,7 +699,6 @@ async def count_command(interaction: discord.Interaction, who: str, role: discor
     #     delta += interaction.user.id
     #     result = delta % 101
     #     await hybrid_cmd_router(interaction, f"Your gayness is **{result}%**! Good Job!")
-
 
 
 @bot.tree.command(name="join", description="Зайти в голосовой чат")
@@ -1704,6 +1703,27 @@ async def on_member_join(member):
     else:
         print(f"{datetime.now()} | Ролей для автовыдачи не обнаружено")
 
+    SDI.set_userdata(member.guild.id, member.id, date.today().isoformat(), "date_joined")
+
+    if member.name not in SDI.get_userdata(member.guild.id, member.id, "statistics", "nicknames"):
+        names: list = SDI.get_userdata(member.guild.id, member.id, "statistics", "nicknames")
+        // print("имена: ", names)
+        names.append(member.display_name)
+        // print("имена: ", names)
+    SDI.set_userdata(member.guild.id, member.id, date.today().isoformat(), "date_joined")
+
+
+@bot.event
+async def on_member_update(before, after):
+    if before.nick != after.nick and after.nick is not None:
+        print(before.nick, "|", after.nick)
+        if after.nick not in SDI.get_userdata(before.guild.id, before.id, "statistics", "nicknames"):
+            names: list = SDI.get_userdata(before.guild.id, before.id, "statistics", "nicknames")
+            // print("имена: ", names)
+            names.append(after.display_name)
+            // print("имена: ", names)
+            SDI.save_cfgs(before.guild.id)
+    pass
 
 @bot.event
 async def on_member_remove(member):

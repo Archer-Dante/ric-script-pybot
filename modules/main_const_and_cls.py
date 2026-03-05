@@ -58,6 +58,7 @@ class CommandsNames:
                 f'- /count members @role - перечислить людей у которых есть данная роль\n'
                 f'- /gayness @member - узнать свою gayness или кого-то другого\n'
                 f'\n'
+                f'- /names @member - показать все известные ники пользователя (без указания @member = показать для себя)'
                 f'Все документация, вопросы и предложения:\n'
                 f'https://discord.gg/BuqngSncdm')
 
